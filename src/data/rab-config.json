@@ -1,12 +1,104 @@
 {
   "rabItems": [
-    { "id": "rab-1", "name": "Tenda 70 Plong", "qty": 70, "unit": "plong", "price": 450000 },
-    { "id": "rab-2", "name": "Panggung Utama (6 × 8 M)", "qty": 1, "unit": "set", "price": 3500000 },
-    { "id": "rab-3", "name": "Panggung Kreasi dan Seni (4 × 6 M)", "qty": 2, "unit": "set", "price": 2500000 },
-    { "id": "rab-4", "name": "Kursi Sarung", "qty": 3000, "unit": "bh", "price": 4000 },
-    { "id": "rab-5", "name": "Set Taman", "qty": 1, "unit": "paket", "price": 3000000 },
-    { "id": "rab-6", "name": "Hambal", "qty": 1, "unit": "paket", "price": 1500000 }
+    {
+      "id": "rab-1",
+      "name": "Tenda",
+      "price": 450000,
+      "qty": 70,
+      "unit": "plong"
+    },
+    {
+      "id": "rab-2",
+      "name": "Panggung Utama 6x8",
+      "price": 3500000,
+      "qty": 1,
+      "unit": "paket"
+    },
+    {
+      "id": "rab-3",
+      "name": "Panggung kreasi dan seni ukuran 4x6",
+      "price": 2500000,
+      "qty": 2,
+      "unit": "set"
+    },
+    {
+      "id": "rab-4",
+      "name": "Kursi sarung",
+      "price": 4000,
+      "qty": 3000,
+      "unit": "buah"
+    },
+    {
+      "id": "rab-5",
+      "name": "Taman",
+      "price": 3000000,
+      "qty": 1,
+      "unit": "set"
+    },
+    {
+      "id": "rab-6",
+      "name": "Hambal",
+      "price": 1500000,
+      "qty": 1,
+      "unit": "set"
+    },
+    {
+      "id": "rab-7",
+      "name": "Videotron 3x5m",
+      "price": 1000000,
+      "qty": 15,
+      "unit": "meter"
+    },
+    {
+      "id": "rab-8",
+      "name": "paket lighting dan equipment",
+      "price": 6000000,
+      "qty": 1,
+      "unit": "paket"
+    },
+    {
+      "id": "rab-9",
+      "name": "Sound",
+      "price": 5500000,
+      "qty": 1,
+      "unit": "set"
+    },
+    {
+      "id": "rab-10",
+      "name": "Meja Makan VIP",
+      "price": 250000,
+      "qty": 8,
+      "unit": "set"
+    },
+    {
+      "id": "rab-11",
+      "name": "Blower Kipas",
+      "price": 350000,
+      "qty": 10,
+      "unit": "buah"
+    },
+    {
+      "id": "rab-12",
+      "name": "Disel Kipas + Roll",
+      "price": 1000000,
+      "qty": 1,
+      "unit": "paket"
+    },
+    {
+      "id": "rab-13",
+      "name": "Dokumentasi",
+      "price": 5000000,
+      "qty": 1,
+      "unit": "paket"
+    },
+    {
+      "id": "rab-14",
+      "name": "Band",
+      "price": 5000000,
+      "qty": 1,
+      "unit": "paket"
+    }
   ],
-  "rabDiscount": 500000,
-  "lastUpdated": "2026-10-23T21:10:00+07:00"
+  "rabDiscount": 0,
+  "updatedAt": "2026-10-23T21:31:00.000Z"
 }

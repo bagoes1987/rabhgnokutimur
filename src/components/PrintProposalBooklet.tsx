@@ -792,25 +792,25 @@ export default function PrintProposalBooklet({
             </div>
           </div>
 
-          <table className="w-full text-xs border-collapse border border-slate-300 mb-3">
+          <table className="w-full text-xs border-collapse border border-slate-300 mb-2">
             <thead>
               <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300 text-left">
-                <th className="p-2 border-r border-slate-300 text-center w-8">
+                <th className="p-1.5 border-r border-slate-300 text-center w-8">
                   No
                 </th>
-                <th className="p-2 border-r border-slate-300">
-                  Uraian Kebutuhan / Komponen Acara
+                <th className="p-1.5 border-r border-slate-300">
+                  Nama Item
                 </th>
-                <th className="p-2 border-r border-slate-300 text-center w-16">
-                  Volume
+                <th className="p-1.5 border-r border-slate-300 text-right w-28">
+                  Harga
                 </th>
-                <th className="p-2 border-r border-slate-300 text-center w-16">
+                <th className="p-1.5 border-r border-slate-300 text-center w-16">
+                  Jumlah
+                </th>
+                <th className="p-1.5 border-r border-slate-300 text-center w-16">
                   Satuan
                 </th>
-                <th className="p-2 border-r border-slate-300 text-right w-28">
-                  Harga Satuan (Rp)
-                </th>
-                <th className="p-2 text-right w-32">Total Biaya (Rp)</th>
+                <th className="p-1.5 text-right w-32">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-[11px] text-slate-800">
@@ -821,24 +821,24 @@ export default function PrintProposalBooklet({
                     key={item.id}
                     className={idx % 2 === 1 ? "bg-slate-50/60" : ""}
                   >
-                    <td className="p-2 border-r border-slate-300 text-center font-bold text-slate-600">
+                    <td className="p-1.5 border-r border-slate-300 text-center font-bold text-slate-600">
                       {idx + 1}
                     </td>
-                    <td className="p-2 border-r border-slate-300 font-semibold text-slate-900">
+                    <td className="p-1.5 border-r border-slate-300 font-semibold text-slate-900">
                       {item.name}
                     </td>
-                    <td className="p-2 border-r border-slate-300 text-center font-bold text-slate-800">
-                      {item.qty.toLocaleString("id-ID")}
-                    </td>
-                    <td className="p-2 border-r border-slate-300 text-center uppercase text-slate-600">
-                      {item.unit}
-                    </td>
-                    <td className="p-2 border-r border-slate-300 text-right font-medium text-slate-800">
+                    <td className="p-1.5 border-r border-slate-300 text-right font-medium text-slate-800">
                       {item.price > 0
                         ? "Rp " + item.price.toLocaleString("id-ID")
                         : "Rp -"}
                     </td>
-                    <td className="p-2 text-right font-bold text-slate-900">
+                    <td className="p-1.5 border-r border-slate-300 text-center font-bold text-slate-800">
+                      {item.qty.toLocaleString("id-ID")}
+                    </td>
+                    <td className="p-1.5 border-r border-slate-300 text-center text-slate-600">
+                      {item.unit}
+                    </td>
+                    <td className="p-1.5 text-right font-bold text-slate-900">
                       {sub > 0 ? "Rp " + sub.toLocaleString("id-ID") : "Rp -"}
                     </td>
                   </tr>

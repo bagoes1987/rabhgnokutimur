@@ -39,20 +39,24 @@ const CadSimulator3D = dynamic(() => import("@/components/CadSimulator3D"), {
 });
 
 const DEFAULT_RAB_LIST: RabItem[] = [
-  { id: "rab-1", name: "Tenda 70 Plong", qty: 70, unit: "plong", price: 450000 },
-  { id: "rab-2", name: "Panggung Utama (6 × 8 M)", qty: 1, unit: "set", price: 3500000 },
-  { id: "rab-3", name: "Panggung Kreasi dan Seni (4 × 6 M)", qty: 2, unit: "set", price: 2500000 },
-  { id: "rab-4", name: "Kursi Sarung", qty: 3000, unit: "bh", price: 4000 },
-  { id: "rab-5", name: "Set Taman", qty: 1, unit: "paket", price: 3000000 },
-  { id: "rab-6", name: "Hambal", qty: 1, unit: "paket", price: 1500000 },
+  { id: "rab-1", name: "Tenda", price: 450000, qty: 70, unit: "plong" },
+  { id: "rab-2", name: "Panggung Utama 6x8", price: 3500000, qty: 1, unit: "paket" },
+  { id: "rab-3", name: "Panggung kreasi dan seni ukuran 4x6", price: 2500000, qty: 2, unit: "set" },
+  { id: "rab-4", name: "Kursi sarung", price: 4000, qty: 3000, unit: "buah" },
+  { id: "rab-5", name: "Taman", price: 3000000, qty: 1, unit: "set" },
+  { id: "rab-6", name: "Hambal", price: 1500000, qty: 1, unit: "set" },
+  { id: "rab-7", name: "Videotron 3x5m", price: 1000000, qty: 15, unit: "meter" },
+  { id: "rab-8", name: "paket lighting dan equipment", price: 6000000, qty: 1, unit: "paket" },
+  { id: "rab-9", name: "Sound", price: 5500000, qty: 1, unit: "set" },
+  { id: "rab-10", name: "Meja Makan VIP", price: 250000, qty: 8, unit: "set" },
+  { id: "rab-11", name: "Blower Kipas", price: 350000, qty: 10, unit: "buah" },
+  { id: "rab-12", name: "Disel Kipas + Roll", price: 1000000, qty: 1, unit: "paket" },
+  { id: "rab-13", name: "Dokumentasi", price: 5000000, qty: 1, unit: "paket" },
+  { id: "rab-14", name: "Band", price: 5000000, qty: 1, unit: "paket" },
 ];
 
 const OPTIONAL_EO_ITEMS: Omit<RabItem, "id">[] = [
-  { name: "Videotron LED Screen (8 × 3 M)", qty: 1, unit: "paket", price: 0 },
-  { name: "Sound System Line Array & Delay Tower", qty: 1, unit: "paket", price: 0 },
-  { name: "Lighting Panggung & Efek", qty: 1, unit: "paket", price: 0 },
   { name: "Kursi Sofa VVIP & Meja Kaca", qty: 5, unit: "set", price: 0 },
-  { name: "Dokumentasi Drone & Live Streaming", qty: 1, unit: "paket", price: 0 },
   { name: "Konsumsi Tamu & Peserta", qty: 1, unit: "paket", price: 0 },
 ];
 
@@ -240,37 +244,40 @@ function terbilangRupiah(angka: number): string {
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"denah" | "render" | "rab">("denah");
   const [rabItems, setRabItems] = useState<RabItem[]>(DEFAULT_RAB_LIST);
-  const [rabDiscount, setRabDiscount] = useState<number>(500000);
+  const [rabDiscount, setRabDiscount] = useState<number>(0);
   const [studioKey, setStudioKey] = useState<"front" | "side" | "rear" | "full">("front");
   const [external3DAngle, setExternal3DAngle] = useState<string | null>(null);
-  const [mapZoom, setMapZoom] = useState<number>(1);
+  const [mapZoom, setMapZoom] = useState<number>(1.25);
+  const [isPanning, setIsPanning] = useState<boolean>(false);
   const [showProcessionRoute, setShowProcessionRoute] = useState<boolean>(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [gitSyncStatus, setGitSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
   const [lastGitSyncTime, setLastGitSyncTime] = useState<string | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const svgViewportRef = useRef<HTMLDivElement | null>(null);
+  const panOriginRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
   const meteranRef = useRef<HTMLDivElement | null>(null);
   const cad3DRef = useRef<CadSimulator3DRef | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load saved RAB from server (rab-config.json) or localStorage
+  // Load saved RAB from server (rab-config.json) or localStorage (v3 = 14 items Rp 99.500.000)
   useEffect(() => {
     fetch("/api/sync-git")
       .then((res) => res.json())
       .then((data) => {
         if (data?.ok && Array.isArray(data.rabItems) && data.rabItems.length > 0) {
           setRabItems(data.rabItems);
-          setRabDiscount(typeof data.rabDiscount === "number" ? data.rabDiscount : 500000);
-          localStorage.setItem("rab_data_hut_pgri_v2", JSON.stringify(data.rabItems));
-          localStorage.setItem("rab_discount_hut_pgri_v2", String(data.rabDiscount ?? 500000));
+          setRabDiscount(typeof data.rabDiscount === "number" ? data.rabDiscount : 0);
+          localStorage.setItem("rab_data_hut_pgri_v3", JSON.stringify(data.rabItems));
+          localStorage.setItem("rab_discount_hut_pgri_v3", String(data.rabDiscount ?? 0));
           return;
         }
       })
       .catch(() => {
         try {
-          const savedItems = localStorage.getItem("rab_data_hut_pgri_v2");
-          const savedDiscount = localStorage.getItem("rab_discount_hut_pgri_v2");
+          const savedItems = localStorage.getItem("rab_data_hut_pgri_v3");
+          const savedDiscount = localStorage.getItem("rab_discount_hut_pgri_v3");
           if (savedItems) {
             setRabItems(JSON.parse(savedItems));
           }
@@ -323,8 +330,8 @@ export default function HomePage() {
     setRabItems(items);
     setRabDiscount(discount);
     try {
-      localStorage.setItem("rab_data_hut_pgri_v2", JSON.stringify(items));
-      localStorage.setItem("rab_discount_hut_pgri_v2", String(discount));
+      localStorage.setItem("rab_data_hut_pgri_v3", JSON.stringify(items));
+      localStorage.setItem("rab_discount_hut_pgri_v3", String(discount));
     } catch (err) {
       console.warn("Error saving RAB:", err);
     }
@@ -612,19 +619,21 @@ export default function HomePage() {
   };
 
   const resetRabToDefault = () => {
-    persistRab(DEFAULT_RAB_LIST, 500000);
-    showToast("🔄 RAB dikembalikan ke perhitungan utama Rp 56.000.000");
+    persistRab(DEFAULT_RAB_LIST, 0);
+    showToast("🔄 RAB dikembalikan ke 14 item utama (Total Rp 99.500.000)");
   };
 
   const exportRabToCsv = () => {
-    const headers = ["No,Uraian Pekerjaan,Volume,Satuan,Harga Satuan (Rp),Subtotal (Rp)"];
+    const headers = ["No,Nama Item,Harga (Rp),Jumlah,Satuan,Total (Rp)"];
     const rows = rabItems.map((it, idx) => {
       const sub = (it.qty || 0) * (it.price || 0);
-      return `${idx + 1},"${it.name}",${it.qty},"${it.unit}",${it.price},${sub}`;
+      return `${idx + 1},"${it.name}",${it.price},${it.qty},"${it.unit}",${sub}`;
     });
-    rows.push(`,"Subtotal Rincian Item",,,,${rawSubtotal}`);
-    rows.push(`,"Potongan / Pembulatan Paket",,,, -${rabDiscount}`);
-    rows.push(`,"GRAND TOTAL RAB",,,,${grandTotal}`);
+    if (rabDiscount > 0) {
+      rows.push(`,"Subtotal Rincian Item",,,,${rawSubtotal}`);
+      rows.push(`,"Potongan / Pembulatan Paket",,,, -${rabDiscount}`);
+    }
+    rows.push(`,"Total",,,,${grandTotal}`);
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
     const a = document.createElement("a");
     a.href = encodeURI(csvContent);
@@ -755,25 +764,25 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Live Budget Highlight Pill */}
+            {/* Quick Action Pill to Open RAB Tab (WITHOUT exposing RAB numbers outside Tab 3) */}
             <div
               onClick={() => setActiveTab("rab")}
-              className="bg-slate-950/90 hover:bg-slate-950 border border-amber-500/40 rounded-2xl p-4 min-w-[260px] shadow-xl cursor-pointer transition group"
+              className="bg-slate-950/90 hover:bg-slate-950 border border-emerald-500/40 rounded-2xl p-4 min-w-[250px] shadow-xl cursor-pointer transition group"
             >
-              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-amber-400">
-                <span>Total Anggaran (RAB)</span>
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                <span>Dokumen & Kalkulasi EO</span>
                 <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
               </div>
-              <div className="text-2xl md:text-3xl font-black text-white mt-1">
-                {formatRupiah(grandTotal)}
+              <div className="text-lg md:text-xl font-black text-white mt-1">
+                Buka Rincian RAB →
               </div>
-              <div className="text-[11px] text-slate-400 italic mt-0.5 truncate">
-                {terbilangText}
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                Klik Tab 3 untuk melihat & mengedit anggaran
               </div>
             </div>
           </div>
 
-          {/* 4 KPI Cards */}
+          {/* 4 KPI Cards (Purely Technical Venue Metrics - No RAB Numbers Here) */}
           <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6">
             <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-4 rounded-2xl">
               <span className="text-[11px] text-slate-400 font-medium block">
@@ -813,13 +822,13 @@ export default function HomePage() {
 
             <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-4 rounded-2xl">
               <span className="text-[11px] text-slate-400 font-medium block">
-                Dekorasi & Tata Ruang
+                Multimedia & Tata Ruang
               </span>
               <span className="text-xl md:text-2xl font-black text-indigo-400 mt-0.5 block">
-                Taman & Hambal
+                Videotron 3×5 M
               </span>
               <span className="text-[11px] text-slate-400 mt-0.5 block">
-                VVIP Hadap Stage • Choir Hadap Guru
+                Taman, Hambal, Sound, Lighting & Blower
               </span>
             </div>
           </div>
@@ -859,7 +868,7 @@ export default function HomePage() {
               }`}
             >
               <Wallet className="w-4 h-4" />
-              <span>3. Rencana Anggaran Biaya / RAB ({formatRupiah(grandTotal)})</span>
+              <span>3. Rencana Anggaran Biaya (RAB)</span>
             </button>
           </div>
         </header>
@@ -869,87 +878,146 @@ export default function HomePage() {
         {/* ===================================================================== */}
         {activeTab === "denah" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* LEFT 8 COLS: INTERACTIVE 2D CAD MAP */}
-              <div className="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-                  <div>
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-emerald-400" />
-                      Cetak Biru Tata Letak Lapangan SMAN 1 Belitang
-                    </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Skala Lapangan 22 × 60 M (Total Tapak 96,15 M) • Kapasitas 3.000 Kursi Guru
-                    </p>
-                  </div>
-
-                  {/* Interactive Controls & Download Buttons */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1">
-                      <button
-                        onClick={() => setMapZoom((z) => Math.max(0.75, z - 0.15))}
-                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
-                        title="Perkecil"
-                      >
-                        <ZoomOut className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="px-2 text-[11px] font-mono font-bold text-slate-300">
-                        {Math.round(mapZoom * 100)}%
-                      </span>
-                      <button
-                        onClick={() => setMapZoom((z) => Math.min(1.6, z + 0.15))}
-                        className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition"
-                        title="Perbesar"
-                      >
-                        <ZoomIn className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => setShowProcessionRoute((v) => !v)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
-                        showProcessionRoute
-                          ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
-                          : "bg-slate-800 border-slate-700 text-slate-400"
-                      }`}
-                    >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>Rute Bupati</span>
-                    </button>
-
-                    <button
-                      onClick={() => downloadDenahImage("poster")}
-                      className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download PNG</span>
-                    </button>
-
-                    <button
-                      onClick={downloadDenahSvg}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1 cursor-pointer"
-                    >
-                      <FileCode className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>SVG</span>
-                    </button>
-                  </div>
+            {/* FULL-WIDTH INTERACTIVE 2D CAD MAP WITH LARGE ZOOM IN/OUT */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col">
+              <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+                    Cetak Biru Denah 2D Lapangan SMAN 1 Belitang (Resolusi Tinggi - Bisa Di-Zoom)
+                  </h2>
+                  <p className="text-xs text-slate-300 mt-1">
+                    Gunakan tombol <strong>➕ Zoom In / ➖ Zoom Out</strong> di bawah (atau tahan klik kiri & geser peta) untuk memperbesar tulisan hingga <strong>300%</strong> dengan sangat tajam.
+                  </p>
                 </div>
 
-                {/* SVG Viewport */}
-                <div className="relative bg-slate-950 rounded-2xl p-3 md:p-5 border border-slate-800/80 overflow-auto flex justify-center max-h-[820px]">
+                {/* Interactive Zoom Controls & Download Buttons */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center bg-slate-950 border-2 border-emerald-500/40 rounded-xl p-1 shadow-lg">
+                    <button
+                      onClick={() => setMapZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-white font-bold text-xs transition flex items-center gap-1 cursor-pointer"
+                      title="Perkecil Denah (Zoom Out)"
+                    >
+                      <ZoomOut className="w-4 h-4 text-amber-400" />
+                      <span>Zoom Out (-)</span>
+                    </button>
+
+                    <span className="px-3 text-xs font-mono font-black text-emerald-400 min-w-[62px] text-center">
+                      {Math.round(mapZoom * 100)}%
+                    </span>
+
+                    <button
+                      onClick={() => setMapZoom((z) => Math.min(3.0, +(z + 0.25).toFixed(2)))}
+                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-bold text-xs transition flex items-center gap-1 cursor-pointer"
+                      title="Perbesar Denah (Zoom In)"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                      <span>Zoom In (+)</span>
+                    </button>
+                  </div>
+
+                  {/* Quick Zoom Presets */}
+                  <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1">
+                    {[
+                      [1.0, "100%"],
+                      [1.25, "125%"],
+                      [1.5, "150%"],
+                      [2.0, "200%"],
+                      [2.5, "250%"],
+                    ].map(([val, label]) => (
+                      <button
+                        key={String(label)}
+                        onClick={() => setMapZoom(Number(val))}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                          Math.abs(mapZoom - Number(val)) < 0.05
+                            ? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/40"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setShowProcessionRoute((v) => !v)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
+                      showProcessionRoute
+                        ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
+                        : "bg-slate-800 border-slate-700 text-slate-400"
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Rute Bupati</span>
+                  </button>
+
+                  <button
+                    onClick={() => downloadDenahImage("poster")}
+                    className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PNG</span>
+                  </button>
+
+                  <button
+                    onClick={downloadDenahSvg}
+                    className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <FileCode className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>SVG</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SVG Viewport with True Vector Scaling & Click-Drag Panning */}
+              <div
+                ref={svgViewportRef}
+                onMouseDown={(e) => {
+                  if (!svgViewportRef.current) return;
+                  setIsPanning(true);
+                  panOriginRef.current = {
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    scrollLeft: svgViewportRef.current.scrollLeft,
+                    scrollTop: svgViewportRef.current.scrollTop,
+                  };
+                }}
+                onMouseMove={(e) => {
+                  if (!isPanning || !panOriginRef.current || !svgViewportRef.current) return;
+                  const dx = e.clientX - panOriginRef.current.startX;
+                  const dy = e.clientY - panOriginRef.current.startY;
+                  svgViewportRef.current.scrollLeft = panOriginRef.current.scrollLeft - dx;
+                  svgViewportRef.current.scrollTop = panOriginRef.current.scrollTop - dy;
+                }}
+                onMouseUp={() => setIsPanning(false)}
+                onMouseLeave={() => setIsPanning(false)}
+                onWheel={(e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const delta = e.deltaY < 0 ? 0.15 : -0.15;
+                    setMapZoom((z) => Math.min(3.0, Math.max(0.5, +(z + delta).toFixed(2))));
+                  }
+                }}
+                className={`relative bg-slate-950 rounded-2xl p-4 md:p-6 border border-slate-800/80 overflow-auto max-h-[860px] ${
+                  isPanning ? "cursor-grabbing" : "cursor-grab"
+                }`}
+              >
+                <div className="min-w-fit flex justify-center mx-auto">
                   <svg
                     ref={svgRef}
                     id="denahSvg"
-                    width="440"
-                    height="1020"
+                    width={Math.round(740 * mapZoom)}
+                    height={Math.round(1715 * mapZoom)}
                     viewBox="0 0 440 1020"
                     style={{
-                      transform: `scale(${mapZoom})`,
-                      transformOrigin: "top center",
+                      width: `${Math.round(740 * mapZoom)}px`,
+                      height: `${Math.round(1715 * mapZoom)}px`,
+                      minWidth: `${Math.round(740 * mapZoom)}px`,
                       fontFamily:
                         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
                     }}
-                    className="w-full max-w-[480px] h-auto select-none drop-shadow-2xl transition-transform duration-200"
+                    className="select-none drop-shadow-2xl transition-all duration-150"
                   >
                     <defs>
                       <pattern
@@ -1598,147 +1666,100 @@ export default function HomePage() {
                     </text>
                   </svg>
                 </div>
-
-                {/* Quick Download Action Footer */}
-                <div className="mt-4 pt-3.5 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span className="text-white font-bold">
-                        Simpan & Bagikan Gambar Denah 2D:
-                      </span>
-                    </div>
-                    <p className="text-slate-400 text-[11px] mt-0.5">
-                      Format Ultra-HD (PNG 300 DPI) jernih saat di-zoom, siap dikirim ke grup WhatsApp panitia.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-                    <button
-                      onClick={() => downloadDenahImage("poster")}
-                      className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Unduh Poster Lengkap (+ Legenda)</span>
-                    </button>
-                    <button
-                      onClick={() => downloadDenahImage("cad-only")}
-                      className="flex-1 sm:flex-none px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>📐 Denah Saja</span>
-                    </button>
-                  </div>
-                </div>
               </div>
 
-              {/* RIGHT 4 COLS: TECHNICAL SPECS & RAB SUMMARY */}
-              <div className="lg:col-span-4 space-y-5">
-                {/* Distribusi 3.000 Kursi */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl">
-                  <h3 className="text-base font-bold text-amber-400 flex items-center gap-2 mb-3">
-                    <ShieldCheck className="w-5 h-5 text-amber-400" />
-                    Distribusi Zonasi 3.000 Kursi
-                  </h3>
-                  <div className="space-y-2.5 text-xs">
-                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-white block">
-                          Ring 1: Sofa VVIP Mewah
-                        </span>
-                        <span className="text-slate-400">
-                          Bupati, Ketua PGRI, Forkopimda
-                        </span>
-                      </div>
-                      <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 font-extrabold rounded-lg">
-                        40 Kursi
-                      </span>
-                    </div>
-
-                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-white block">
-                          Ring 2: VIP Undangan Khusus
-                        </span>
-                        <span className="text-slate-400">
-                          Pengurus Cabang, Camat, Kepsek
-                        </span>
-                      </div>
-                      <span className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 font-extrabold rounded-lg">
-                        160 Kursi
-                      </span>
-                    </div>
-
-                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-white block">
-                          Lapangan Utama (Blok 1 & 2)
-                        </span>
-                        <span className="text-slate-400">
-                          Baris 1–60 (Napolly + Sarung)
-                        </span>
-                      </div>
-                      <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold rounded-lg">
-                        1.800 Kursi
-                      </span>
-                    </div>
-
-                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-white block">
-                          Tribun Lapangan Atas (Blok 3)
-                        </span>
-                        <span className="text-slate-400">
-                          Baris 61–89 (Elevasi Berundak)
-                        </span>
-                      </div>
-                      <span className="px-2.5 py-1 bg-sky-500/20 text-sky-300 font-extrabold rounded-lg">
-                        1.026 Kursi
-                      </span>
-                    </div>
+              {/* Quick Download Action Footer */}
+              <div className="mt-4 pt-3.5 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-white font-bold">
+                      Simpan & Bagikan Gambar Denah 2D:
+                    </span>
                   </div>
+                  <p className="text-slate-400 text-[11px] mt-0.5">
+                    Format Ultra-HD (PNG 300 DPI) jernih saat di-zoom, siap dikirim ke grup WhatsApp panitia.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                  <button
+                    onClick={() => downloadDenahImage("poster")}
+                    className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Unduh Poster Lengkap (+ Legenda)</span>
+                  </button>
+                  <button
+                    onClick={() => downloadDenahImage("cad-only")}
+                    className="flex-1 sm:flex-none px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>📐 Denah Saja</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* DISTRIBUSI ZONASI 3.000 KURSI (4-COLUMN HORIZONTAL CARDS - NO RAB NUMBERS) */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 md:p-6 shadow-xl">
+              <h3 className="text-base font-bold text-amber-400 flex items-center gap-2 mb-4">
+                <ShieldCheck className="w-5 h-5 text-amber-400" />
+                Distribusi Zonasi 3.000 Kursi Peserta & Tamu Kehormatan
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+                <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-white block">
+                      Ring 1: Sofa VVIP Mewah
+                    </span>
+                    <span className="text-slate-400">
+                      Bupati, Ketua PGRI, Forkopimda
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 font-extrabold rounded-lg shrink-0">
+                    40 Kursi
+                  </span>
                 </div>
 
-                {/* Ringkasan Cepat Paket RAB Rp 56 Juta */}
-                <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-5 shadow-xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-amber-400" />
-                      Ringkasan RAB Terkini
-                    </h3>
-                    <button
-                      onClick={() => setActiveTab("rab")}
-                      className="text-[11px] font-bold text-amber-400 hover:underline cursor-pointer"
-                    >
-                      Edit RAB →
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs divide-y divide-slate-800/70">
-                    {rabItems.map((it) => (
-                      <div
-                        key={it.id}
-                        className="pt-1.5 flex justify-between items-center text-slate-300"
-                      >
-                        <span className="truncate pr-2">
-                          {it.name}{" "}
-                          <span className="text-slate-500">
-                            ({it.qty} {it.unit})
-                          </span>
-                        </span>
-                        <span className="font-mono font-bold text-amber-300 shrink-0">
-                          {formatRupiah((it.qty || 0) * (it.price || 0))}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
-                    <span className="text-xs font-bold uppercase text-slate-400">
-                      Total Paket EO:
+                <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-white block">
+                      Ring 2: VIP Undangan Khusus
                     </span>
-                    <span className="text-lg font-black text-emerald-400">
-                      {formatRupiah(grandTotal)}
+                    <span className="text-slate-400">
+                      Pengurus Cabang, Camat, Kepsek
                     </span>
                   </div>
+                  <span className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 font-extrabold rounded-lg shrink-0">
+                    160 Kursi
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-white block">
+                      Lapangan Utama (Blok 1 & 2)
+                    </span>
+                    <span className="text-slate-400">
+                      Baris 1–60 (Napolly + Sarung)
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold rounded-lg shrink-0">
+                    1.800 Kursi
+                  </span>
+                </div>
+
+                <div className="p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-white block">
+                      Tribun Lapangan Atas (Blok 3)
+                    </span>
+                    <span className="text-slate-400">
+                      Baris 61–89 (Elevasi Berundak)
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 bg-sky-500/20 text-sky-300 font-extrabold rounded-lg shrink-0">
+                    1.026 Kursi
+                  </span>
                 </div>
               </div>
             </div>
@@ -1981,7 +2002,7 @@ export default function HomePage() {
                     {formatRupiah(rawSubtotal)}
                   </span>
                   <span className="text-[11px] text-emerald-400 block mt-0.5">
-                    Tenda 70 plong, Panggung, Kursi 3.000, Taman, Hambal
+                    14 Komponen Perlengkapan, Multimedia & Hiburan
                   </span>
                 </div>
 
@@ -1993,13 +2014,13 @@ export default function HomePage() {
                     - {formatRupiah(rabDiscount)}
                   </span>
                   <span className="text-[11px] text-slate-400 block mt-0.5">
-                    Dapat diubah di baris bawah tabel RAB
+                    Opsional (dapat diisi di baris bawah tabel)
                   </span>
                 </div>
 
                 <div className="bg-gradient-to-br from-amber-950/80 to-slate-950 p-4 rounded-2xl border border-amber-500/50 shadow-lg">
                   <span className="text-xs text-amber-300 block font-bold uppercase tracking-wider">
-                    Grand Total Estimasi Biaya (RAB)
+                    Total Rencana Anggaran Biaya (RAB)
                   </span>
                   <span className="text-2xl md:text-3xl font-black text-amber-400 mt-0.5 block">
                     {formatRupiah(grandTotal)}
@@ -2011,24 +2032,18 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Interactive RAB Table */}
+            {/* Interactive RAB Table (Exact Column Order: No | Nama Item | Harga | Jumlah | Satuan | Total) */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden">
               <div className="overflow-x-auto rounded-2xl border border-slate-800">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-950 text-slate-300 uppercase tracking-wider text-[11px] border-b border-slate-800">
                       <th className="p-3 text-center w-12">No</th>
-                      <th className="p-3 min-w-[240px]">
-                        Uraian Item / Pekerjaan
-                      </th>
-                      <th className="p-3 text-center w-24">Volume</th>
+                      <th className="p-3 min-w-[240px]">Nama Item</th>
+                      <th className="p-3 min-w-[170px] text-right">Harga</th>
+                      <th className="p-3 text-center w-24">Jumlah</th>
                       <th className="p-3 text-center w-24">Satuan</th>
-                      <th className="p-3 min-w-[170px] text-right">
-                        Harga Satuan (Rp)
-                      </th>
-                      <th className="p-3 min-w-[180px] text-right">
-                        Subtotal (Rp)
-                      </th>
+                      <th className="p-3 min-w-[180px] text-right">Total</th>
                       <th className="p-3 text-center w-24">Porsi</th>
                       <th className="p-3 text-center w-14">Aksi</th>
                     </tr>
@@ -2056,31 +2071,6 @@ export default function HomePage() {
                                 updateItemField(item.id, "name", e.target.value)
                               }
                               className="w-full bg-slate-950/70 border border-slate-700/70 focus:border-amber-400 text-white font-semibold text-xs rounded-xl px-3 py-2 outline-none"
-                            />
-                          </td>
-                          <td className="p-3 text-center">
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.qty}
-                              onChange={(e) =>
-                                updateItemField(
-                                  item.id,
-                                  "qty",
-                                  parseFloat(e.target.value) || 0
-                                )
-                              }
-                              className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
-                            />
-                          </td>
-                          <td className="p-3 text-center">
-                            <input
-                              type="text"
-                              value={item.unit}
-                              onChange={(e) =>
-                                updateItemField(item.id, "unit", e.target.value)
-                              }
-                              className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
                             />
                           </td>
                           <td className="p-3 text-right">
@@ -2111,6 +2101,31 @@ export default function HomePage() {
                                 className="w-full bg-slate-950/70 border border-slate-700/70 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl pl-9 pr-3 py-2 text-right outline-none"
                               />
                             </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.qty}
+                              onChange={(e) =>
+                                updateItemField(
+                                  item.id,
+                                  "qty",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
+                            />
+                          </td>
+                          <td className="p-3 text-center">
+                            <input
+                              type="text"
+                              value={item.unit}
+                              onChange={(e) =>
+                                updateItemField(item.id, "unit", e.target.value)
+                              }
+                              className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
+                            />
                           </td>
                           <td className="p-3 text-right">
                             <div className="relative flex items-center">
