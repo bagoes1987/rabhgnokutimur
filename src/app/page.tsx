@@ -170,12 +170,12 @@ const STUDIO_RENDERS = {
   },
 };
 
-export function formatRupiah(num: number): string {
+function formatRupiah(num: number): string {
   if (!num || isNaN(num) || num <= 0) return "Rp 0";
   return "Rp " + Math.floor(num).toLocaleString("id-ID");
 }
 
-export function terbilangRupiah(angka: number): string {
+function terbilangRupiah(angka: number): string {
   if (isNaN(angka) || angka <= 0) return "Nol Rupiah";
   const nVal = Math.floor(Math.abs(angka));
   if (nVal === 0) return "Nol Rupiah";
