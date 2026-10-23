@@ -31,3 +31,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# raw large video source (>100MB, web version is in /public/video-denah-lokasi.mp4)
+/VIDEO DENAH LOKASI.MP4
+
