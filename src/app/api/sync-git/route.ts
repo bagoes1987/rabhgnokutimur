@@ -33,8 +33,8 @@ export async function POST(request: Request) {
     const payload = {
       rabItems: Array.isArray(rabItems) ? rabItems : (existingData.rabItems || []),
       rabDiscount: typeof rabDiscount === "number" ? rabDiscount : (existingData.rabDiscount ?? 0),
-      rabPublicAccess: typeof rabPublicAccess === "boolean" ? rabPublicAccess : (existingData.rabPublicAccess ?? true),
-      adminPin: typeof adminPin === "string" && adminPin.trim() ? adminPin.trim() : (existingData.adminPin || "1987"),
+      rabPublicAccess: typeof rabPublicAccess === "boolean" ? rabPublicAccess : (existingData.rabPublicAccess ?? false),
+      adminPin: typeof adminPin === "string" && adminPin.trim() ? adminPin.trim() : (existingData.adminPin || "10603301"),
       lastUpdated: new Date().toISOString(),
     };
 

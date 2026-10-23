@@ -278,8 +278,8 @@ export default function HomePage() {
 
   // Admin Authorization & Public Access Control State (RAB Only)
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [rabPublicAccess, setRabPublicAccess] = useState<boolean>(true);
-  const [adminPin, setAdminPin] = useState<string>("1987");
+  const [rabPublicAccess, setRabPublicAccess] = useState<boolean>(false);
+  const [adminPin, setAdminPin] = useState<string>("10603301");
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [loginPinInput, setLoginPinInput] = useState<string>("");
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -335,6 +335,14 @@ export default function HomePage() {
 
   // Load saved RAB & Access Settings from server (rab-config.json) or localStorage
   useEffect(() => {
+    // Purge outdated demo PIN from previous sessions if any
+    try {
+      const storedPin = localStorage.getItem("rab_admin_pin");
+      if (storedPin === "1987") {
+        localStorage.setItem("rab_admin_pin", "10603301");
+      }
+    } catch {}
+
     fetch("/api/sync-git")
       .then((res) => res.json())
       .then((data) => {
@@ -347,10 +355,16 @@ export default function HomePage() {
         if (typeof data?.rabPublicAccess === "boolean") {
           setRabPublicAccess(data.rabPublicAccess);
           localStorage.setItem("rab_public_access", String(data.rabPublicAccess));
+        } else {
+          setRabPublicAccess(false);
+          localStorage.setItem("rab_public_access", "false");
         }
-        if (typeof data?.adminPin === "string" && data.adminPin) {
+        if (typeof data?.adminPin === "string" && data.adminPin && data.adminPin !== "1987") {
           setAdminPin(data.adminPin);
           localStorage.setItem("rab_admin_pin", data.adminPin);
+        } else {
+          setAdminPin("10603301");
+          localStorage.setItem("rab_admin_pin", "10603301");
         }
       })
       .catch(() => {
@@ -362,7 +376,12 @@ export default function HomePage() {
           if (savedItems) setRabItems(JSON.parse(savedItems));
           if (savedDiscount !== null) setRabDiscount(parseInt(savedDiscount, 10) || 0);
           if (savedAccess !== null) setRabPublicAccess(savedAccess === "true");
-          if (savedPin) setAdminPin(savedPin);
+          if (savedPin && savedPin !== "1987") {
+            setAdminPin(savedPin);
+          } else {
+            setAdminPin("10603301");
+            localStorage.setItem("rab_admin_pin", "10603301");
+          }
         } catch (err) {
           console.warn("Error loading RAB from localStorage:", err);
         }
@@ -548,6 +567,11 @@ export default function HomePage() {
 
   const scrollToAddRabSection = () => {
     setActiveTab("rab");
+    if (!isAdmin) {
+      showToast("🔒 Fitur Tambah & Edit Anggaran khusus Admin. Masukkan PIN Admin (10603301).");
+      setShowLoginModal(true);
+      return;
+    }
     setTimeout(() => {
       addRabSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 150);
@@ -934,15 +958,30 @@ export default function HomePage() {
               <span>Video Lokasi</span>
             </button>
 
-            <button
-              type="button"
-              onClick={scrollToAddRabSection}
-              className="touch-manipulation px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black bg-amber-500/20 active:bg-amber-500/35 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 transition flex items-center justify-center gap-1 cursor-pointer shadow-sm"
-              title="Buka Menu Tambah Item Anggaran Baru"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Tambah Anggaran</span>
-            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={scrollToAddRabSection}
+                className="touch-manipulation px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black bg-amber-500/20 active:bg-amber-500/35 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 transition flex items-center justify-center gap-1 cursor-pointer shadow-sm"
+                title="Buka Menu Tambah Item Anggaran Baru"
+              >
+                <Plus className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>+ Anggaran</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginError(null);
+                  setShowLoginModal(true);
+                }}
+                className="touch-manipulation px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-amber-500/15 active:bg-amber-500/30 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition flex items-center justify-center gap-1 cursor-pointer shadow-sm"
+                title="Masuk Sebagai Admin untuk Buka & Edit RAB (PIN: 10603301)"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Login Admin RAB</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1061,7 +1100,9 @@ export default function HomePage() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Wallet className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-amber-200" />
-                  <span className="truncate text-left">3. Rencana Anggaran Biaya (RAB)</span>
+                  <span className="truncate text-left">
+                    3. Rencana Anggaran Biaya (RAB) {!isAdmin && !rabPublicAccess ? "🔒" : ""}
+                  </span>
                 </div>
                 <span
                   className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
@@ -1070,7 +1111,7 @@ export default function HomePage() {
                       : "bg-slate-800 text-slate-400"
                   }`}
                 >
-                  {activeTab === "rab" ? "AKTIF" : "BUKA"}
+                  {activeTab === "rab" ? "AKTIF" : !isAdmin && !rabPublicAccess ? "KUNCI" : "BUKA"}
                 </span>
               </button>
             </div>
@@ -1097,11 +1138,20 @@ export default function HomePage() {
                 className="touch-manipulation w-full py-2.5 px-3.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 active:bg-amber-900 border border-amber-500/40 text-amber-200 text-xs font-bold transition flex items-center justify-between gap-2 cursor-pointer shadow-sm"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Plus className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="truncate">➕ Tambah Item Anggaran (Hitung Otomatis)</span>
+                  {isAdmin ? (
+                    <>
+                      <Plus className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">➕ Tambah Item Anggaran (Hitung Otomatis)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">🔒 Menu RAB Terkunci (Login Admin untuk Akses)</span>
+                    </>
+                  )}
                 </div>
                 <span className="text-[10px] font-mono text-amber-300 bg-amber-900/80 px-2 py-0.5 rounded shrink-0">
-                  Otomatis
+                  {isAdmin ? "Admin" : "PIN: 10603301"}
                 </span>
               </button>
             </div>
@@ -2308,40 +2358,75 @@ export default function HomePage() {
           <div className="space-y-4 sm:space-y-6">
             {/* KONDISI 1: JIKA AKSES PUBLIK DIKUNCI TOTAL OLEH ADMIN & USER BELUM LOGIN */}
             {!isAdmin && !rabPublicAccess ? (
-              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-rose-950/30 border-2 border-rose-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl text-center max-w-2xl mx-auto space-y-4 my-6">
+              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-rose-950/40 border-2 border-rose-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl text-center max-w-2xl mx-auto space-y-5 my-6">
                 <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 mx-auto flex items-center justify-center shadow-lg">
                   <Lock className="w-8 h-8" />
                 </div>
                 <div className="space-y-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold uppercase tracking-wider border border-rose-500/40">
                     <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>Akses Rencana Anggaran Biaya (RAB) Dibatasi</span>
+                    <span>Menu RAB Kosong & Terkunci</span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black text-white">
-                    RAB Hanya Dapat Dilihat & Diedit Atas Izin Admin
+                    Rencana Anggaran Biaya (RAB) Terkunci
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
-                    Bagian Rencana Anggaran Biaya (RAB) saat ini sedang dikunci oleh Admin Panitia untuk menjaga privasi dan validitas data penganggaran.
-                    <br /><br />
-                    <span className="text-slate-400 text-xs">
-                      ℹ️ Catatan: Menu Denah 2D, Video Drone Lokasi, dan Studio Visual 3D tetap terbuka bebas untuk dilihat umum.
-                    </span>
+                    Seluruh rincian item penganggaran dikosongkan untuk pengunjung umum demi menjaga privasi dan keamanan dokumen. Menu RAB hanya dapat dibuka jika Admin memberikan izin akses, atau masukkan PIN Admin untuk membuka akses penuh.
                   </p>
                 </div>
 
-                <div className="pt-2 flex justify-center">
+                {/* INLINE ADMIN PIN LOGIN FORM */}
+                <form
+                  onSubmit={handleAdminLogin}
+                  className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 max-w-md mx-auto space-y-3.5 shadow-inner text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-300">
+                      Masukkan PIN Admin:
+                    </label>
+                    <span className="text-[10px] text-amber-400 font-mono">
+                      Khusus Admin Panitia
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPinVisible ? "text" : "password"}
+                      value={loginPinInput}
+                      onChange={(e) => {
+                        setLoginPinInput(e.target.value);
+                        setLoginError(null);
+                      }}
+                      placeholder="Ketik PIN Admin..."
+                      autoComplete="current-password"
+                      className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-center tracking-widest text-base sm:text-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPinVisible(!showPinVisible)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                    >
+                      {showPinVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {loginError && (
+                    <div className="text-xs text-rose-400 font-semibold bg-rose-950/60 border border-rose-800/80 rounded-lg p-2.5">
+                      ⚠️ {loginError}
+                    </div>
+                  )}
+
                   <button
-                    type="button"
-                    onClick={() => {
-                      setLoginError(null);
-                      setShowLoginModal(true);
-                    }}
-                    className="touch-manipulation px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm shadow-xl transition flex items-center gap-2 cursor-pointer border border-amber-300"
+                    type="submit"
+                    className="touch-manipulation w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm shadow-xl transition flex items-center justify-center gap-2 cursor-pointer border border-amber-300"
                   >
                     <KeyRound className="w-4 h-4 stroke-[3]" />
-                    <span>Masuk Sebagai Admin (Buka dengan PIN)</span>
+                    <span>Buka Akses Admin (PIN)</span>
                   </button>
-                </div>
+                </form>
+
+                <p className="text-[11px] text-slate-400 pt-1">
+                  ℹ️ Catatan: Menu Denah 2D, Video Drone Udara, dan Studio CAD 3D tetap terbuka bebas untuk dilihat umum.
+                </p>
               </div>
             ) : (
               <>
@@ -3513,6 +3598,7 @@ export default function HomePage() {
         rabDiscount={rabDiscount}
         formatRupiah={formatRupiah}
         terbilangRupiah={terbilangRupiah}
+        isRabAccessible={isAdmin || rabPublicAccess}
       />
     </>
   );

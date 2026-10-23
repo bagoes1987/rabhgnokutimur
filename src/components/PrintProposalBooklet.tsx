@@ -15,6 +15,7 @@ interface PrintProposalBookletProps {
   rabDiscount: number;
   formatRupiah: (num: number) => string;
   terbilangRupiah: (num: number) => string;
+  isRabAccessible?: boolean;
 }
 
 export default function PrintProposalBooklet({
@@ -22,6 +23,7 @@ export default function PrintProposalBooklet({
   rabDiscount,
   formatRupiah,
   terbilangRupiah,
+  isRabAccessible = true,
 }: PrintProposalBookletProps) {
   const rawSubtotal = rabItems.reduce(
     (acc, it) => acc + (it.qty || 0) * (it.price || 0),
@@ -121,10 +123,10 @@ export default function PrintProposalBooklet({
                   Total Anggaran
                 </span>
                 <span className="text-sm font-black text-emerald-800">
-                  {formatRupiah(grandTotal)}
+                  {isRabAccessible ? formatRupiah(grandTotal) : "Akses Khusus Admin"}
                 </span>
                 <span className="text-[9px] text-slate-600 block">
-                  Paket Terpadu EO
+                  {isRabAccessible ? "Paket Terpadu EO" : "Terkunci"}
                 </span>
               </div>
             </div>
@@ -197,10 +199,19 @@ export default function PrintProposalBooklet({
               </strong>{" "}
               yang bertempat di <strong>Lapangan SMAN 1 Belitang</strong> dengan
               estimasi kehadiran <strong>3.000 peserta guru</strong>, bersama
-              ini kami sampaikan dokumen perencanaan teknis terpadu beserta
-              Rencana Anggaran Biaya (RAB) sebesar{" "}
-              <strong>{formatRupiah(grandTotal)}</strong> (
-              <em>{terbilangText}</em>).
+              ini kami sampaikan dokumen perencanaan teknis terpadu{" "}
+              {isRabAccessible ? (
+                <>
+                  beserta Rencana Anggaran Biaya (RAB) sebesar{" "}
+                  <strong>{formatRupiah(grandTotal)}</strong> (
+                  <em>{terbilangText}</em>).
+                </>
+              ) : (
+                <>
+                  beserta Rencana Anggaran Biaya (RAB) resmi yang dapat ditinjau
+                  melalui otorisasi Admin Panitia.
+                </>
+              )}
             </p>
           </div>
 
@@ -792,108 +803,122 @@ export default function PrintProposalBooklet({
             </div>
           </div>
 
-          <table className="w-full text-xs border-collapse border border-slate-300 mb-2">
-            <thead>
-              <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300 text-left">
-                <th className="p-1.5 border-r border-slate-300 text-center w-8">
-                  No
-                </th>
-                <th className="p-1.5 border-r border-slate-300">
-                  Nama Item
-                </th>
-                <th className="p-1.5 border-r border-slate-300 text-right w-28">
-                  Harga
-                </th>
-                <th className="p-1.5 border-r border-slate-300 text-center w-16">
-                  Jumlah
-                </th>
-                <th className="p-1.5 border-r border-slate-300 text-center w-16">
-                  Satuan
-                </th>
-                <th className="p-1.5 text-right w-32">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 text-[11px] text-slate-800">
-              {rabItems.map((item, idx) => {
-                const sub = (item.qty || 0) * (item.price || 0);
-                return (
-                  <tr
-                    key={item.id}
-                    className={idx % 2 === 1 ? "bg-slate-50/60" : ""}
-                  >
-                    <td className="p-1.5 border-r border-slate-300 text-center font-bold text-slate-600">
-                      {idx + 1}
-                    </td>
-                    <td className="p-1.5 border-r border-slate-300 font-semibold text-slate-900">
-                      {item.name}
-                    </td>
-                    <td className="p-1.5 border-r border-slate-300 text-right font-medium text-slate-800">
-                      {item.price > 0
-                        ? "Rp " + item.price.toLocaleString("id-ID")
-                        : "Rp -"}
-                    </td>
-                    <td className="p-1.5 border-r border-slate-300 text-center font-bold text-slate-800">
-                      {item.qty.toLocaleString("id-ID")}
-                    </td>
-                    <td className="p-1.5 border-r border-slate-300 text-center text-slate-600">
-                      {item.unit}
-                    </td>
-                    <td className="p-1.5 text-right font-bold text-slate-900">
-                      {sub > 0 ? "Rp " + sub.toLocaleString("id-ID") : "Rp -"}
-                    </td>
+          {isRabAccessible ? (
+            <>
+              <table className="w-full text-xs border-collapse border border-slate-300 mb-2">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300 text-left">
+                    <th className="p-1.5 border-r border-slate-300 text-center w-8">
+                      No
+                    </th>
+                    <th className="p-1.5 border-r border-slate-300">
+                      Nama Item
+                    </th>
+                    <th className="p-1.5 border-r border-slate-300 text-right w-28">
+                      Harga
+                    </th>
+                    <th className="p-1.5 border-r border-slate-300 text-center w-16">
+                      Jumlah
+                    </th>
+                    <th className="p-1.5 border-r border-slate-300 text-center w-16">
+                      Satuan
+                    </th>
+                    <th className="p-1.5 text-right w-32">Total</th>
                   </tr>
-                );
-              })}
-              {rabDiscount > 0 && (
-                <>
-                  <tr className="bg-slate-100/80 border-t border-slate-300">
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-[11px] text-slate-800">
+                  {rabItems.map((item, idx) => {
+                    const sub = (item.qty || 0) * (item.price || 0);
+                    return (
+                      <tr
+                        key={item.id}
+                        className={idx % 2 === 1 ? "bg-slate-50/60" : ""}
+                      >
+                        <td className="p-1.5 border-r border-slate-300 text-center font-bold text-slate-600">
+                          {idx + 1}
+                        </td>
+                        <td className="p-1.5 border-r border-slate-300 font-semibold text-slate-900">
+                          {item.name}
+                        </td>
+                        <td className="p-1.5 border-r border-slate-300 text-right font-medium text-slate-800">
+                          {item.price > 0
+                            ? "Rp " + item.price.toLocaleString("id-ID")
+                            : "Rp -"}
+                        </td>
+                        <td className="p-1.5 border-r border-slate-300 text-center font-bold text-slate-800">
+                          {item.qty.toLocaleString("id-ID")}
+                        </td>
+                        <td className="p-1.5 border-r border-slate-300 text-center text-slate-600">
+                          {item.unit}
+                        </td>
+                        <td className="p-1.5 text-right font-bold text-slate-900">
+                          {sub > 0 ? "Rp " + sub.toLocaleString("id-ID") : "Rp -"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {rabDiscount > 0 && (
+                    <>
+                      <tr className="bg-slate-100/80 border-t border-slate-300">
+                        <td
+                          colSpan={5}
+                          className="p-2 border-r border-slate-300 text-right font-bold text-slate-700"
+                        >
+                          Subtotal Rincian Item:
+                        </td>
+                        <td className="p-2 text-right font-bold text-slate-800">
+                          {formatRupiah(rawSubtotal)}
+                        </td>
+                      </tr>
+                      <tr className="bg-emerald-50/60">
+                        <td
+                          colSpan={5}
+                          className="p-2 border-r border-slate-300 text-right font-bold text-emerald-800"
+                        >
+                          Potongan / Pembulatan Paket EO:
+                        </td>
+                        <td className="p-2 text-right font-bold text-emerald-800">
+                          - {formatRupiah(rabDiscount)}
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-100 font-bold border-t-2 border-slate-400 text-xs">
                     <td
                       colSpan={5}
-                      className="p-2 border-r border-slate-300 text-right font-bold text-slate-700"
+                      className="p-2.5 text-right uppercase text-slate-800 font-extrabold tracking-wide"
                     >
-                      Subtotal Rincian Item:
+                      Grand Total Estimasi Biaya (RAB):
                     </td>
-                    <td className="p-2 text-right font-bold text-slate-800">
-                      {formatRupiah(rawSubtotal)}
+                    <td className="p-2.5 text-right font-black text-emerald-900 text-sm">
+                      {formatRupiah(grandTotal)}
                     </td>
                   </tr>
-                  <tr className="bg-emerald-50/60">
-                    <td
-                      colSpan={5}
-                      className="p-2 border-r border-slate-300 text-right font-bold text-emerald-800"
-                    >
-                      Potongan / Pembulatan Paket EO:
-                    </td>
-                    <td className="p-2 text-right font-bold text-emerald-800">
-                      - {formatRupiah(rabDiscount)}
-                    </td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-            <tfoot>
-              <tr className="bg-slate-100 font-bold border-t-2 border-slate-400 text-xs">
-                <td
-                  colSpan={5}
-                  className="p-2.5 text-right uppercase text-slate-800 font-extrabold tracking-wide"
-                >
-                  Grand Total Estimasi Biaya (RAB):
-                </td>
-                <td className="p-2.5 text-right font-black text-emerald-900 text-sm">
-                  {formatRupiah(grandTotal)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                </tfoot>
+              </table>
 
-          <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50 mb-3 text-xs">
-            <span className="font-bold text-slate-700 block text-[10px] uppercase">
-              Terbilang:
-            </span>
-            <span className="font-black text-slate-900 text-xs italic block mt-0.5">
-              &ldquo;{terbilangText}&rdquo;
-            </span>
-          </div>
+              <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50 mb-3 text-xs">
+                <span className="font-bold text-slate-700 block text-[10px] uppercase">
+                  Terbilang:
+                </span>
+                <span className="font-black text-slate-900 text-xs italic block mt-0.5">
+                  &ldquo;{terbilangText}&rdquo;
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center my-10 bg-slate-50 space-y-3">
+              <div className="text-3xl">🔒</div>
+              <h4 className="text-sm font-black uppercase text-slate-800 tracking-wider">
+                Lampiran Rencana Anggaran Biaya (RAB) Kosong & Terkunci
+              </h4>
+              <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
+                Rincian item penganggaran disembunyikan dan dikosongkan untuk publik sesuai izin Admin Panitia. Dokumen cetak proposal resmi dengan rincian angka RAB lengkap hanya dapat dicetak melalui Mode Admin.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-slate-300 pt-3 avoid-break">
