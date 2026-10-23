@@ -246,26 +246,78 @@ export default function HomePage() {
   const [mapZoom, setMapZoom] = useState<number>(1);
   const [showProcessionRoute, setShowProcessionRoute] = useState<boolean>(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [gitSyncStatus, setGitSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
+  const [lastGitSyncTime, setLastGitSyncTime] = useState<string | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const meteranRef = useRef<HTMLDivElement | null>(null);
   const cad3DRef = useRef<CadSimulator3DRef | null>(null);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load saved RAB from localStorage
+  // Load saved RAB from server (rab-config.json) or localStorage
   useEffect(() => {
+    fetch("/api/sync-git")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ok && Array.isArray(data.rabItems) && data.rabItems.length > 0) {
+          setRabItems(data.rabItems);
+          setRabDiscount(typeof data.rabDiscount === "number" ? data.rabDiscount : 500000);
+          localStorage.setItem("rab_data_hut_pgri_v2", JSON.stringify(data.rabItems));
+          localStorage.setItem("rab_discount_hut_pgri_v2", String(data.rabDiscount ?? 500000));
+          return;
+        }
+      })
+      .catch(() => {
+        try {
+          const savedItems = localStorage.getItem("rab_data_hut_pgri_v2");
+          const savedDiscount = localStorage.getItem("rab_discount_hut_pgri_v2");
+          if (savedItems) {
+            setRabItems(JSON.parse(savedItems));
+          }
+          if (savedDiscount !== null) {
+            setRabDiscount(parseInt(savedDiscount, 10) || 0);
+          }
+        } catch (err) {
+          console.warn("Error loading RAB from localStorage:", err);
+        }
+      });
+  }, []);
+
+  const triggerGitSync = async (items: RabItem[], discount: number, manual = false) => {
+    setGitSyncStatus("syncing");
+    if (manual) {
+      showToast("☁️ Menyimpan & melakukan Auto-Push ke GitHub...");
+    }
     try {
-      const savedItems = localStorage.getItem("rab_data_hut_pgri_v2");
-      const savedDiscount = localStorage.getItem("rab_discount_hut_pgri_v2");
-      if (savedItems) {
-        setRabItems(JSON.parse(savedItems));
-      }
-      if (savedDiscount !== null) {
-        setRabDiscount(parseInt(savedDiscount, 10) || 0);
+      const res = await fetch("/api/sync-git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rabItems: items,
+          rabDiscount: discount,
+          commitMessage: `Update RAB & Desain via Portal Next.js (${new Date().toLocaleString("id-ID")})`,
+        }),
+      });
+      const data = await res.json();
+      if (data?.ok) {
+        setGitSyncStatus("synced");
+        const nowStr = new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        setLastGitSyncTime(nowStr);
+        if (manual || data.pushed) {
+          showToast("✅ Auto-Push GitHub Berhasil! Repository terupdate.");
+        }
+      } else {
+        setGitSyncStatus("error");
       }
     } catch (err) {
-      console.warn("Error loading RAB from localStorage:", err);
+      console.warn("Auto-push git error:", err);
+      setGitSyncStatus("error");
     }
-  }, []);
+  };
 
   const persistRab = (items: RabItem[], discount: number) => {
     setRabItems(items);
@@ -276,6 +328,15 @@ export default function HomePage() {
     } catch (err) {
       console.warn("Error saving RAB:", err);
     }
+
+    // Debounced auto-push to GitHub (2 seconds after user finishes typing/editing)
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+    setGitSyncStatus("syncing");
+    syncTimeoutRef.current = setTimeout(() => {
+      triggerGitSync(items, discount, false);
+    }, 2000);
   };
 
   const showToast = (msg: string) => {
@@ -610,6 +671,39 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => triggerGitSync(rabItems, rabDiscount, true)}
+              title="Klik untuk memaksa push ke GitHub sekarang (Otomatis berjalan setiap ada perubahan)"
+              className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
+                gitSyncStatus === "syncing"
+                  ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                  : gitSyncStatus === "synced"
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
+                  : gitSyncStatus === "error"
+                  ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                  : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border-slate-700"
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  gitSyncStatus === "syncing"
+                    ? "bg-blue-400 animate-ping"
+                    : gitSyncStatus === "synced"
+                    ? "bg-emerald-400"
+                    : gitSyncStatus === "error"
+                    ? "bg-rose-400"
+                    : "bg-emerald-400 animate-pulse"
+                }`}
+              />
+              <span>
+                {gitSyncStatus === "syncing"
+                  ? "⏳ Auto-Push GitHub..."
+                  : gitSyncStatus === "synced"
+                  ? `✅ Git Synced (${lastGitSyncTime || "Live"})`
+                  : "☁️ Auto-Git Active"}
+              </span>
+            </button>
+
             <button
               onClick={scrollToMeteranSection}
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5 cursor-pointer"

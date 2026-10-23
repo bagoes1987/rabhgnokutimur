@@ -1,0 +1,12 @@
+{
+  "rabItems": [
+    { "id": "rab-1", "name": "Tenda 70 Plong", "qty": 70, "unit": "plong", "price": 450000 },
+    { "id": "rab-2", "name": "Panggung Utama (6 × 8 M)", "qty": 1, "unit": "set", "price": 3500000 },
+    { "id": "rab-3", "name": "Panggung Kreasi dan Seni (4 × 6 M)", "qty": 2, "unit": "set", "price": 2500000 },
+    { "id": "rab-4", "name": "Kursi Sarung", "qty": 3000, "unit": "bh", "price": 4000 },
+    { "id": "rab-5", "name": "Set Taman", "qty": 1, "unit": "paket", "price": 3000000 },
+    { "id": "rab-6", "name": "Hambal", "qty": 1, "unit": "paket", "price": 1500000 }
+  ],
+  "rabDiscount": 500000,
+  "lastUpdated": "2026-10-23T21:10:00+07:00"
+}
