@@ -900,56 +900,56 @@ const CadSimulator3D = forwardRef<CadSimulator3DRef, CadSimulator3DProps>(
     ];
 
     return (
-      <div className="bg-slate-900/90 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-5 md:p-6 shadow-2xl space-y-5">
+      <div className="bg-slate-900/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 shadow-2xl space-y-4 sm:space-y-5">
         {/* Header Bar */}
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-xs font-bold uppercase tracking-wider mb-2 border border-cyan-500/30">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-              AutoCAD & Revit 3D Engine • Real-Time WebGL Blueprint (22 × 96 Meter)
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1.5 border border-cyan-500/30">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0"></span>
+              <span className="truncate">AutoCAD & Revit 3D Engine • 22 × 96 M</span>
             </div>
-            <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-2.5">
-              Simulator Rekayasa 3D CAD: 3.026 Kursi Napolly & Orientasi Presisi
+            <h3 className="text-base sm:text-lg md:text-xl font-black text-white leading-snug">
+              Simulator Rekayasa 3D CAD: 3.026 Kursi & Orientasi Presisi
             </h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-3xl">
-              Gunakan mouse/sentuhan untuk memutar 360°, memperbesar (zoom), atau pilih tombol sudut kamera (POV) di kanan untuk menginspeksi pandangan VVIP, Paduan Suara, dan Baris ke-89.
+            <p className="text-[11px] sm:text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
+              Gunakan sentuhan jari / mouse untuk memutar 360°, memperbesar (zoom), atau pilih tombol sudut kamera (POV) di bawah.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 w-full xl:w-auto">
             <button
               onClick={toggleCinematicTour}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 sm:px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold shadow-lg transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer ${
                 isTourActive
                   ? "bg-rose-600 hover:bg-rose-500 text-white"
                   : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white"
               }`}
             >
-              {isTourActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span>{isTourActive ? "Jeda Tur 360°" : "Tur Sinematik 360°"}</span>
+              {isTourActive ? <Pause className="w-3.5 h-3.5 shrink-0" /> : <Play className="w-3.5 h-3.5 shrink-0" />}
+              <span className="truncate">{isTourActive ? "Jeda Tur" : "Tur 360°"}</span>
             </button>
 
             <button
               onClick={downloadCurrent3DScreenshot}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[10px] sm:text-xs font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
               title="Simpan Screenshot Sudut Pandang 3D Saat Ini"
             >
-              <Camera className="w-3.5 h-3.5" />
-              <span>Ambil Foto 3D (PNG)</span>
+              <Camera className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Foto 3D</span>
             </button>
 
             <button
               onClick={onPrintRequest}
-              className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-[10px] sm:text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak Semua POV 3D</span>
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Cetak 3D</span>
             </button>
           </div>
         </div>
 
         {/* Camera Preset Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 pt-1">
           {cameraButtons.map((btn) => {
             const Icon = btn.icon;
             const isActive = activePreset === btn.id && !isTourActive;
@@ -957,43 +957,40 @@ const CadSimulator3D = forwardRef<CadSimulator3DRef, CadSimulator3DProps>(
               <button
                 key={btn.id}
                 onClick={() => handleSetCameraAngle(btn.id)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                className={`px-2.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer border ${
                   isActive
                     ? "bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-md shadow-cyan-950/50"
                     : "bg-slate-950/80 hover:bg-slate-800 text-slate-300 border-slate-800"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{btn.label}</span>
+                <Icon className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">{btn.label}</span>
               </button>
             );
           })}
         </div>
 
         {/* 3D Canvas Viewport */}
-        <div className="relative w-full h-[540px] rounded-2xl overflow-hidden border border-cyan-500/40 bg-[#020617] shadow-inner">
+        <div className="relative w-full h-[360px] sm:h-[540px] rounded-xl sm:rounded-2xl overflow-hidden border border-cyan-500/40 bg-[#020617] shadow-inner">
           <div
             ref={containerRef}
             className="w-full h-full cursor-grab active:cursor-grabbing"
           />
 
           {/* Top Left Engineering Telemetry */}
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2 pointer-events-none">
-            <span className="bg-slate-950/90 backdrop-blur-md px-3 py-1 rounded-xl text-[11px] font-mono font-bold text-cyan-400 border border-cyan-500/40">
-              CAD SCALE 1:100 • 22.00 × 96.00 METER
+          <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5 pointer-events-none">
+            <span className="bg-slate-950/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] sm:text-[11px] font-mono font-bold text-cyan-400 border border-cyan-500/40">
+              CAD 1:100 • 22 × 96 M
             </span>
-            <span className="bg-slate-950/90 backdrop-blur-md px-3 py-1 rounded-xl text-[11px] font-mono font-bold text-emerald-400 border border-emerald-500/40">
-              3.026 KURSI NAPOLLY BIG-208 (89 BARIS)
-            </span>
-            <span className="bg-slate-950/90 backdrop-blur-md px-3 py-1 rounded-xl text-[11px] font-mono font-bold text-amber-400 border border-amber-500/40">
-              GRID: 1.00 M METRIC
+            <span className="hidden sm:inline-block bg-slate-950/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold text-emerald-400 border border-emerald-500/40">
+              3.026 KURSI NAPOLLY BIG-208
             </span>
           </div>
 
           {/* Bottom Status Bar */}
-          <div className="absolute bottom-3 left-3 right-3 bg-slate-950/90 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 pointer-events-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <span className="text-cyan-400 font-bold">{angleLabel}</span>
-            <span className="text-amber-400 font-semibold">
+          <div className="absolute bottom-2.5 left-2.5 right-2.5 bg-slate-950/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-800 text-[10px] sm:text-[11px] text-slate-300 pointer-events-none flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+            <span className="text-cyan-400 font-bold truncate w-full sm:w-auto">{angleLabel}</span>
+            <span className="hidden md:inline text-amber-400 font-semibold">
               ✓ Orientasi Terverifikasi: VVIP Hadap Panggung • Paduan Suara Hadap Peserta
             </span>
           </div>

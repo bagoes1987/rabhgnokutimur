@@ -650,224 +650,182 @@ export default function HomePage() {
     <>
       {/* ================= FLOATING TOAST NOTIFICATION ================= */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-2xl bg-slate-900/95 border border-emerald-500/50 text-white text-xs font-bold shadow-2xl backdrop-blur-xl flex items-center gap-2.5 animate-bounce no-print">
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900/95 border border-emerald-500/50 text-white text-xs font-bold shadow-2xl backdrop-blur-xl flex items-center gap-2.5 no-print">
           <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMsg}</span>
+          <span className="truncate">{toastMsg}</span>
         </div>
       )}
 
       {/* ================= STICKY GLASSMORPHIC TOP NAVBAR ================= */}
-      <div className="sticky top-0 z-40 bg-[#030712]/85 backdrop-blur-xl border-b border-slate-800/80 no-print">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-950/60 border border-emerald-400/40 font-black text-white text-sm">
-              PGRI
+      <div className="sticky top-0 z-40 bg-[#030712]/90 backdrop-blur-xl border-b border-slate-800/80 no-print">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="min-w-0">
+            <div className="text-[11px] sm:text-xs md:text-sm font-black tracking-wide uppercase text-white leading-snug">
+              PORTAL PERENCANAAN EKSEKUTIF • HUT PGRI KE-79 & HGN
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black tracking-wider uppercase text-white">
-                  PORTAL PERENCANAAN EKSEKUTIF • HUT PGRI KE-79 & HGN
-                </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Next.js Enterprise CAD
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Kabupaten OKU Timur • Venue: Lapangan SMAN 1 Belitang (22 × 96,15 M)
-              </p>
-            </div>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate mt-0.5">
+              Kabupaten OKU Timur • Venue: Lapangan SMAN 1 Belitang (22 × 96,15 M)
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => triggerGitSync(rabItems, rabDiscount, true)}
-              title="Klik untuk memaksa push ke GitHub sekarang (Otomatis berjalan setiap ada perubahan)"
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
-                gitSyncStatus === "syncing"
-                  ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                  : gitSyncStatus === "synced"
-                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
-                  : gitSyncStatus === "error"
-                  ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                  : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border-slate-700"
-              }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  gitSyncStatus === "syncing"
-                    ? "bg-blue-400 animate-ping"
-                    : gitSyncStatus === "synced"
-                    ? "bg-emerald-400"
-                    : gitSyncStatus === "error"
-                    ? "bg-rose-400"
-                    : "bg-emerald-400 animate-pulse"
-                }`}
-              />
-              <span>
-                {gitSyncStatus === "syncing"
-                  ? "⏳ Auto-Push GitHub..."
-                  : gitSyncStatus === "synced"
-                  ? `✅ Git Synced (${lastGitSyncTime || "Live"})`
-                  : "☁️ Auto-Git Active"}
-              </span>
-            </button>
-
+          <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
             <button
               onClick={scrollToMeteranSection}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
             >
-              <Ruler className="w-3.5 h-3.5 text-amber-400" />
-              <span>Patokan Meteran (96,15 M)</span>
+              <Ruler className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">Meteran 96M</span>
             </button>
 
             <button
               onClick={() => downloadDenahImage("poster")}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Unduh Denah 2D</span>
+              <Download className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="truncate">Unduh 2D</span>
             </button>
 
             <button
               onClick={handlePrintProposal}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white shadow-lg shadow-emerald-950/60 border border-emerald-400/40 transition flex items-center gap-1.5 cursor-pointer"
+              className="px-2.5 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white shadow-lg shadow-emerald-950/60 border border-emerald-400/40 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak Proposal EO (PDF)</span>
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Cetak PDF</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* ================= MAIN WEB CONTAINER ================= */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6 no-print">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 no-print">
         {/* HERO BANNER & EXECUTIVE KPI BENTO GRID */}
-        <header className="relative rounded-3xl bg-gradient-to-br from-slate-900 via-[#091326] to-emerald-950/40 border border-slate-800/90 p-6 md:p-8 shadow-2xl overflow-hidden">
+        <header className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-[#091326] to-emerald-950/40 border border-slate-800/90 p-4 sm:p-6 md:p-8 shadow-2xl overflow-hidden">
           <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-800/80">
             <div className="space-y-2 max-w-3xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
-                <Award className="w-3.5 h-3.5 text-emerald-400" />
-                Masterplan Resmi • Bupati OKU Timur & Ketua PGRI Kab. OKU Timur
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+                <Award className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">Masterplan Resmi • PGRI & HGN Kab. OKU Timur</span>
               </div>
-              <h1 className="text-2xl md:text-4xl font-black tracking-tight text-white leading-tight">
+              <h1 className="text-lg sm:text-2xl md:text-4xl font-black tracking-tight text-white leading-snug sm:leading-tight">
                 Arsitektur Tata Ruang 2D/3D CAD & Rencana Anggaran Biaya (RAB)
               </h1>
-              <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
                 Sistem komando visual dan kalkulasi anggaran presisi untuk{" "}
                 <strong className="text-white">3.000 Peserta Guru</strong> di{" "}
                 <strong className="text-emerald-400">Lapangan SMAN 1 Belitang</strong>.
-                Terintegrasi penuh dengan simulasi 3D nyata, panduan tarikan roll meteran panitia, dan dokumen proposal siap cetak.
+                Terintegrasi dengan simulasi 3D nyata, panduan tarikan roll meteran panitia, dan dokumen proposal siap cetak.
               </p>
             </div>
 
             {/* Quick Action Pill to Open RAB Tab (WITHOUT exposing RAB numbers outside Tab 3) */}
             <div
               onClick={() => setActiveTab("rab")}
-              className="bg-slate-950/90 hover:bg-slate-950 border border-emerald-500/40 rounded-2xl p-4 min-w-[250px] shadow-xl cursor-pointer transition group"
+              className="bg-slate-950/90 hover:bg-slate-950 border border-emerald-500/40 rounded-2xl p-3.5 sm:p-4 w-full lg:w-auto lg:min-w-[240px] shadow-xl cursor-pointer transition group flex lg:block items-center justify-between"
             >
-              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                <span>Dokumen & Kalkulasi EO</span>
-                <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
+              <div>
+                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                  <span>Dokumen & Kalkulasi EO</span>
+                </div>
+                <div className="text-sm sm:text-lg font-black text-white mt-0.5">
+                  Buka Rincian RAB →
+                </div>
+                <div className="text-[10px] sm:text-[11px] text-slate-400">
+                  Klik untuk melihat & edit anggaran
+                </div>
               </div>
-              <div className="text-lg md:text-xl font-black text-white mt-1">
-                Buka Rincian RAB →
-              </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">
-                Klik Tab 3 untuk melihat & mengedit anggaran
-              </div>
+              <ArrowUpRight className="w-5 h-5 text-emerald-400 lg:hidden shrink-0" />
             </div>
           </div>
 
-          {/* 4 KPI Cards (Purely Technical Venue Metrics - No RAB Numbers Here) */}
-          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-6">
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-4 rounded-2xl">
-              <span className="text-[11px] text-slate-400 font-medium block">
+          {/* 4 KPI Cards (Purely Technical Venue Metrics - Proportional on Mobile) */}
+          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mt-4 sm:mt-6">
+            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
                 Total Kapasitas Kursi
               </span>
-              <span className="text-xl md:text-2xl font-black text-amber-400 mt-0.5 block">
+              <span className="text-base sm:text-xl md:text-2xl font-black text-amber-400 mt-0.5 block">
                 3.000+ Guru
               </span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block">
-                Napolly BIG-208 + Sarung Kursi
+              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
+                Napolly BIG-208 + Sarung
               </span>
             </div>
 
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-4 rounded-2xl">
-              <span className="text-[11px] text-slate-400 font-medium block">
-                Tenda & Panggung Utama
+            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
+                Tenda & Panggung
               </span>
-              <span className="text-xl md:text-2xl font-black text-emerald-400 mt-0.5 block">
+              <span className="text-base sm:text-xl md:text-2xl font-black text-emerald-400 mt-0.5 block">
                 70 Plong & 6×8 M
               </span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block">
-                + 2 Set Panggung Kreasi 4×6 M
+              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
+                + 2 Set Panggung 4×6 M
               </span>
             </div>
 
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-4 rounded-2xl">
-              <span className="text-[11px] text-slate-400 font-medium block">
-                Bentang Tapak Lapangan
+            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
+                Bentang Lapangan
               </span>
-              <span className="text-xl md:text-2xl font-black text-cyan-400 mt-0.5 block">
+              <span className="text-base sm:text-xl md:text-2xl font-black text-cyan-400 mt-0.5 block">
                 22 × 96,15 M
               </span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block">
-                89 Baris × 34 Kursi + 2 Lorong K3
+              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
+                89 Baris × 34 Kursi
               </span>
             </div>
 
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-4 rounded-2xl">
-              <span className="text-[11px] text-slate-400 font-medium block">
+            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
+              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
                 Multimedia & Tata Ruang
               </span>
-              <span className="text-xl md:text-2xl font-black text-indigo-400 mt-0.5 block">
+              <span className="text-base sm:text-xl md:text-2xl font-black text-indigo-400 mt-0.5 block">
                 Videotron 3×5 M
               </span>
-              <span className="text-[11px] text-slate-400 mt-0.5 block">
-                Taman, Hambal, Sound, Lighting & Blower
+              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
+                Taman, Sound & Lighting
               </span>
             </div>
           </div>
 
-          {/* Primary Navigation Tabs */}
-          <div className="relative z-10 flex flex-wrap items-center gap-2.5 mt-6">
+          {/* Primary Navigation Tabs (Stacked Full-Width on Mobile, Inline on Desktop) */}
+          <div className="relative z-10 grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 mt-4 sm:mt-6">
             <button
               onClick={() => setActiveTab("denah")}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center sm:justify-start gap-2 cursor-pointer ${
                 activeTab === "denah"
                   ? "bg-emerald-600 text-white shadow-lg shadow-emerald-950/60 border border-emerald-400/50"
                   : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700"
               }`}
             >
-              <Map className="w-4 h-4" />
+              <Map className="w-4 h-4 shrink-0" />
               <span>1. Denah 2D Skematik & Meteran (96,15 M)</span>
             </button>
 
             <button
               onClick={() => setActiveTab("render")}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center sm:justify-start gap-2 cursor-pointer ${
                 activeTab === "render"
                   ? "bg-cyan-600 text-white shadow-lg shadow-cyan-950/60 border border-cyan-400/50"
                   : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700"
               }`}
             >
-              <Box className="w-4 h-4" />
+              <Box className="w-4 h-4 shrink-0" />
               <span>2. Studio Visual 3D & Simulator CAD 360°</span>
             </button>
 
             <button
               onClick={() => setActiveTab("rab")}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center sm:justify-start gap-2 cursor-pointer ${
                 activeTab === "rab"
                   ? "bg-amber-600 text-white shadow-lg shadow-amber-950/60 border border-amber-400/50"
                   : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700"
               }`}
             >
-              <Wallet className="w-4 h-4" />
+              <Wallet className="w-4 h-4 shrink-0" />
               <span>3. Rencana Anggaran Biaya (RAB)</span>
             </button>
           </div>
@@ -877,23 +835,24 @@ export default function HomePage() {
         {/* TAB 1: DENAH 2D SKEMATIK & PATOKAN METERAN LAPANGAN                   */}
         {/* ===================================================================== */}
         {activeTab === "denah" && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* FULL-WIDTH INTERACTIVE 2D CAD MAP WITH LARGE ZOOM IN/OUT */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 md:p-6 shadow-2xl flex flex-col">
-              <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 md:p-6 shadow-2xl flex flex-col">
+              <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-800">
                 <div>
-                  <h2 className="text-lg md:text-xl font-black text-white flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
-                    Cetak Biru Denah 2D Lapangan SMAN 1 Belitang (Resolusi Tinggi - Bisa Di-Zoom)
+                  <h2 className="text-sm sm:text-lg md:text-xl font-black text-white flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span>Cetak Biru Denah 2D Lapangan SMAN 1 Belitang</span>
                   </h2>
-                  <p className="text-xs text-slate-300 mt-1">
-                    Gunakan tombol <strong>➕ Zoom In / ➖ Zoom Out</strong> di bawah (atau tahan klik kiri & geser peta) untuk memperbesar tulisan hingga <strong>300%</strong> dengan sangat tajam.
+                  <p className="text-[11px] sm:text-xs text-slate-300 mt-1">
+                    Tekan <strong>➕ Zoom In / ➖ Zoom Out</strong> untuk memperbesar tulisan hingga <strong>300%</strong>, lalu geser peta ke kiri/kanan/atas/bawah.
                   </p>
                 </div>
 
-                {/* Interactive Zoom Controls & Download Buttons */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center bg-slate-950 border-2 border-emerald-500/40 rounded-xl p-1 shadow-lg">
+                {/* Interactive Zoom Controls & Download Buttons (Proportional on Mobile) */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full xl:w-auto">
+                  {/* Main Zoom Bar */}
+                  <div className="flex items-center justify-between bg-slate-950 border-2 border-emerald-500/40 rounded-xl p-1 shadow-lg">
                     <button
                       onClick={() => setMapZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
                       className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-white font-bold text-xs transition flex items-center gap-1 cursor-pointer"
@@ -903,7 +862,7 @@ export default function HomePage() {
                       <span>Zoom Out (-)</span>
                     </button>
 
-                    <span className="px-3 text-xs font-mono font-black text-emerald-400 min-w-[62px] text-center">
+                    <span className="px-2.5 text-xs font-mono font-black text-emerald-400 min-w-[56px] text-center">
                       {Math.round(mapZoom * 100)}%
                     </span>
 
@@ -918,19 +877,19 @@ export default function HomePage() {
                   </div>
 
                   {/* Quick Zoom Presets */}
-                  <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1">
+                  <div className="grid grid-cols-5 sm:flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl p-1">
                     {[
+                      [0.55, "Pas HP"],
                       [1.0, "100%"],
                       [1.25, "125%"],
-                      [1.5, "150%"],
-                      [2.0, "200%"],
+                      [1.75, "175%"],
                       [2.5, "250%"],
                     ].map(([val, label]) => (
                       <button
                         key={String(label)}
                         onClick={() => setMapZoom(Number(val))}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                          Math.abs(mapZoom - Number(val)) < 0.05
+                        className={`px-2 py-1.5 sm:py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition cursor-pointer text-center ${
+                          Math.abs(mapZoom - Number(val)) < 0.08
                             ? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/40"
                             : "text-slate-400 hover:text-white hover:bg-slate-800"
                         }`}
@@ -940,37 +899,40 @@ export default function HomePage() {
                     ))}
                   </div>
 
-                  <button
-                    onClick={() => setShowProcessionRoute((v) => !v)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
-                      showProcessionRoute
-                        ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
-                        : "bg-slate-800 border-slate-700 text-slate-400"
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Rute Bupati</span>
-                  </button>
+                  {/* Action Buttons Row */}
+                  <div className="grid grid-cols-3 sm:flex items-center gap-1.5">
+                    <button
+                      onClick={() => setShowProcessionRoute((v) => !v)}
+                      className={`px-2.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                        showProcessionRoute
+                          ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
+                          : "bg-slate-800 border-slate-700 text-slate-400"
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">Rute VVIP</span>
+                    </button>
 
-                  <button
-                    onClick={() => downloadDenahImage("poster")}
-                    className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download PNG</span>
-                  </button>
+                    <button
+                      onClick={() => downloadDenahImage("poster")}
+                      className="px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">PNG HD</span>
+                    </button>
 
-                  <button
-                    onClick={downloadDenahSvg}
-                    className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1 cursor-pointer"
-                  >
-                    <FileCode className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>SVG</span>
-                  </button>
+                    <button
+                      onClick={downloadDenahSvg}
+                      className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] sm:text-xs font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <FileCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>SVG</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* SVG Viewport with True Vector Scaling & Click-Drag Panning */}
+              {/* SVG Viewport with True Vector Scaling & Touch/Mouse Panning */}
               <div
                 ref={svgViewportRef}
                 onMouseDown={(e) => {
@@ -999,7 +961,7 @@ export default function HomePage() {
                     setMapZoom((z) => Math.min(3.0, Math.max(0.5, +(z + delta).toFixed(2))));
                   }
                 }}
-                className={`relative bg-slate-950 rounded-2xl p-4 md:p-6 border border-slate-800/80 overflow-auto max-h-[860px] ${
+                className={`relative bg-slate-950 rounded-2xl p-2 sm:p-4 md:p-6 border border-slate-800/80 overflow-auto max-h-[75vh] sm:max-h-[860px] touch-pan-x touch-pan-y ${
                   isPanning ? "cursor-grabbing" : "cursor-grab"
                 }`}
               >
@@ -1007,13 +969,13 @@ export default function HomePage() {
                   <svg
                     ref={svgRef}
                     id="denahSvg"
-                    width={Math.round(740 * mapZoom)}
-                    height={Math.round(1715 * mapZoom)}
+                    width={Math.round(640 * mapZoom)}
+                    height={Math.round(1484 * mapZoom)}
                     viewBox="0 0 440 1020"
                     style={{
-                      width: `${Math.round(740 * mapZoom)}px`,
-                      height: `${Math.round(1715 * mapZoom)}px`,
-                      minWidth: `${Math.round(740 * mapZoom)}px`,
+                      width: `${Math.round(640 * mapZoom)}px`,
+                      height: `${Math.round(1484 * mapZoom)}px`,
+                      minWidth: `${Math.round(640 * mapZoom)}px`,
                       fontFamily:
                         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
                     }}
@@ -1861,30 +1823,30 @@ export default function HomePage() {
         {/* TAB 2: STUDIO VISUAL 3D FOTOREALISTIK & SIMULATOR CAD 3D              */}
         {/* ===================================================================== */}
         {activeTab === "render" && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Photorealistic 3D Render Studio */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
                 <div>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-xs font-bold border border-cyan-500/30 mb-2">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Architectural Render Gallery • 4 Sudut Pandang Utama
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] sm:text-xs font-bold border border-cyan-500/30 mb-1.5">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <span>Architectural Render Gallery • 4 Sudut Pandang</span>
                   </span>
-                  <h2 className="text-xl font-black text-white">
+                  <h2 className="text-base sm:text-xl font-black text-white leading-snug">
                     {currentRender.title}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1 max-w-3xl">
+                  <p className="text-[11px] sm:text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
                     {currentRender.desc}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full md:w-auto">
                   {(
                     [
                       ["front", "1. Tampak Depan"],
                       ["side", "2. Tampak Samping"],
-                      ["rear", "3. POV Tribun Belakang"],
-                      ["full", "4. Full 1 Lapangan"],
+                      ["rear", "3. Tribun Belakang"],
+                      ["full", "4. Full Lapangan"],
                     ] as const
                   ).map(([key, label]) => (
                     <button
@@ -1893,7 +1855,7 @@ export default function HomePage() {
                         setStudioKey(key);
                         setExternal3DAngle(STUDIO_RENDERS[key].cadAngle);
                       }}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                      className={`px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition cursor-pointer border text-center ${
                         studioKey === key
                           ? "bg-cyan-600 text-white border-cyan-400 shadow-lg"
                           : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
@@ -1905,13 +1867,13 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 h-[360px] md:h-[460px]">
+              <div className="relative rounded-xl sm:rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 h-[220px] sm:h-[360px] md:h-[460px]">
                 <img
                   src={currentRender.img}
                   alt={currentRender.title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute top-4 left-4 bg-slate-950/85 backdrop-blur px-3.5 py-1.5 rounded-xl border border-cyan-500/40 text-xs font-bold text-cyan-300">
+                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-slate-950/85 backdrop-blur px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl border border-cyan-500/40 text-[10px] sm:text-xs font-bold text-cyan-300">
                   {currentRender.badge}
                 </div>
               </div>
@@ -1930,110 +1892,237 @@ export default function HomePage() {
         {/* TAB 3: RENCANA ANGGARAN BIAYA (RAB) INTERAKTIF ENTERPRISE             */}
         {/* ===================================================================== */}
         {activeTab === "rab" && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Header & Summary Card */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-amber-500/30 rounded-3xl p-6 shadow-2xl">
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-5 border-b border-slate-800">
+            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 sm:pb-5 border-b border-slate-800">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold uppercase tracking-wider mb-2 border border-amber-500/30">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Kalkulator & Penganggaran EO Interaktif Real-Time
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1.5 border border-amber-500/30">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Kalkulator & Penganggaran EO Interaktif Real-Time</span>
                   </div>
-                  <h2 className="text-xl md:text-2xl font-black text-white">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-black text-white">
                     Rencana Anggaran Biaya (RAB) Pelaksanaan
                   </h2>
-                  <p className="text-xs text-slate-300 mt-1">
-                    Anda dapat mengedit <strong>Volume</strong>,{" "}
-                    <strong>Harga Satuan</strong>, maupun mengetik langsung di kolom{" "}
-                    <strong>Subtotal (Rp)</strong>. Semua perubahan otomatis tersimpan.
+                  <p className="text-[11px] sm:text-xs text-slate-300 mt-1">
+                    Anda dapat mengedit <strong>Harga</strong>,{" "}
+                    <strong>Jumlah</strong>, maupun mengetik langsung di kolom{" "}
+                    <strong>Total (Rp)</strong>. Semua perubahan otomatis tersimpan.
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
                   <button
                     onClick={addNewRabItem}
-                    className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>Tambah Item Baru</span>
-                  </button>
-
-                  <button
-                    onClick={loadOptionalEoItems}
-                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Muat Item Lainnya (Videotron/Sound)</span>
+                    <Plus className="w-3.5 h-3.5 shrink-0" />
+                    <span>Tambah Item</span>
                   </button>
 
                   <button
                     onClick={exportRabToCsv}
-                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] sm:text-xs font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                    <span>Export Excel/CSV</span>
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Export Excel</span>
                   </button>
 
                   <button
                     onClick={handlePrintProposal}
-                    className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Printer className="w-4 h-4" />
-                    <span>Cetak RAB Resmi</span>
+                    <Printer className="w-3.5 h-3.5 shrink-0" />
+                    <span>Cetak RAB</span>
                   </button>
 
                   <button
                     onClick={resetRabToDefault}
-                    className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-medium rounded-xl border border-rose-800/40 transition flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-[11px] sm:text-xs font-medium rounded-xl border border-rose-800/40 transition flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3.5 h-3.5 shrink-0" />
                     <span>Reset</span>
                   </button>
                 </div>
               </div>
 
               {/* 3 Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
-                <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-                  <span className="text-xs text-slate-400 block font-medium">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-5">
+                <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
+                  <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
                     Subtotal Rincian ({rabItems.length} Item)
                   </span>
-                  <span className="text-2xl font-black text-slate-100 mt-0.5 block">
+                  <span className="text-xl sm:text-2xl font-black text-slate-100 mt-0.5 block">
                     {formatRupiah(rawSubtotal)}
                   </span>
-                  <span className="text-[11px] text-emerald-400 block mt-0.5">
+                  <span className="text-[10px] sm:text-[11px] text-emerald-400 block mt-0.5">
                     14 Komponen Perlengkapan, Multimedia & Hiburan
                   </span>
                 </div>
 
-                <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-                  <span className="text-xs text-slate-400 block font-medium">
+                <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
+                  <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
                     Potongan / Pembulatan Paket EO
                   </span>
-                  <span className="text-2xl font-black text-emerald-400 mt-0.5 block">
+                  <span className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 block">
                     - {formatRupiah(rabDiscount)}
                   </span>
-                  <span className="text-[11px] text-slate-400 block mt-0.5">
-                    Opsional (dapat diisi di baris bawah tabel)
+                  <span className="text-[10px] sm:text-[11px] text-slate-400 block mt-0.5">
+                    Opsional (dapat diisi di bawah daftar)
                   </span>
                 </div>
 
-                <div className="bg-gradient-to-br from-amber-950/80 to-slate-950 p-4 rounded-2xl border border-amber-500/50 shadow-lg">
-                  <span className="text-xs text-amber-300 block font-bold uppercase tracking-wider">
+                <div className="bg-gradient-to-br from-amber-950/80 to-slate-950 p-3.5 sm:p-4 rounded-2xl border border-amber-500/50 shadow-lg">
+                  <span className="text-[11px] sm:text-xs text-amber-300 block font-bold uppercase tracking-wider">
                     Total Rencana Anggaran Biaya (RAB)
                   </span>
-                  <span className="text-2xl md:text-3xl font-black text-amber-400 mt-0.5 block">
+                  <span className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 mt-0.5 block">
                     {formatRupiah(grandTotal)}
                   </span>
-                  <span className="text-[11px] text-slate-300 italic block mt-0.5 truncate">
+                  <span className="text-[10px] sm:text-[11px] text-slate-300 italic block mt-0.5 truncate">
                     &ldquo;{terbilangText}&rdquo;
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Interactive RAB Table (Exact Column Order: No | Nama Item | Harga | Jumlah | Satuan | Total) */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden">
+            {/* MOBILE-FRIENDLY CARD VIEW (Tampil Otomatis di Layar HP agar Rapi & Tidak Perlu Geser Kiri-Kanan) */}
+            <div className="md:hidden space-y-3">
+              {rabItems.map((item, index) => {
+                const subtotal = (item.qty || 0) * (item.price || 0);
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-slate-900/95 border border-slate-800 rounded-2xl p-3.5 shadow-lg space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black text-xs shrink-0">
+                        No. {index + 1}
+                      </span>
+                      <button
+                        onClick={() => deleteRabItem(item.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 transition"
+                        title="Hapus item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                        Nama Item
+                      </label>
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) =>
+                          updateItemField(item.id, "name", e.target.value)
+                        }
+                        className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-6">
+                        <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                          Harga (Rp)
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={
+                            item.price > 0
+                              ? item.price.toLocaleString("id-ID")
+                              : ""
+                          }
+                          placeholder="0"
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/[^0-9]/g, "");
+                            updateItemField(
+                              item.id,
+                              "price",
+                              raw ? parseInt(raw, 10) : 0
+                            );
+                          }}
+                          className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl px-2.5 py-2 text-right outline-none"
+                        />
+                      </div>
+
+                      <div className="col-span-3">
+                        <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
+                          Jumlah
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.qty}
+                          onChange={(e) =>
+                            updateItemField(
+                              item.id,
+                              "qty",
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className="w-full bg-slate-950 border border-slate-700/80 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
+                        />
+                      </div>
+
+                      <div className="col-span-3">
+                        <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
+                          Satuan
+                        </label>
+                        <input
+                          type="text"
+                          value={item.unit}
+                          onChange={(e) =>
+                            updateItemField(item.id, "unit", e.target.value)
+                          }
+                          className="w-full bg-slate-950 border border-slate-700/80 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-400">
+                        Total Item:
+                      </span>
+                      <div className="relative flex items-center w-44">
+                        <span className="absolute left-3 text-emerald-400 font-bold text-xs pointer-events-none">
+                          Rp
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={
+                            subtotal > 0 ? subtotal.toLocaleString("id-ID") : ""
+                          }
+                          placeholder="0"
+                          onChange={(e) =>
+                            handleSubtotalDirectChange(item.id, e.target.value)
+                          }
+                          className="w-full bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-black text-xs rounded-xl pl-8 pr-2.5 py-1.5 text-right outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Mobile Footer Total Card */}
+              <div className="bg-slate-950 border-2 border-amber-500/50 rounded-2xl p-4 shadow-xl space-y-2">
+                <div className="flex justify-between items-center text-xs text-slate-300">
+                  <span>Subtotal ({rabItems.length} Item):</span>
+                  <span className="font-bold">{formatRupiah(rawSubtotal)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-black text-amber-400 pt-2 border-t border-slate-800">
+                  <span>TOTAL RAB:</span>
+                  <span className="text-lg">{formatRupiah(grandTotal)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* DESKTOP EXCEL-STYLE RAB TABLE (Exact Column Order: No | Nama Item | Harga | Jumlah | Satuan | Total) */}
+            <div className="hidden md:block bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden">
               <div className="overflow-x-auto rounded-2xl border border-slate-800">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
