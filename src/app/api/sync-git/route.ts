@@ -22,17 +22,24 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { rabItems, rabDiscount, commitMessage } = body;
+    const { rabItems, rabDiscount, rabPublicAccess, adminPin, commitMessage } = body;
 
-    if (Array.isArray(rabItems)) {
-      const payload = {
-        rabItems,
-        rabDiscount: typeof rabDiscount === "number" ? rabDiscount : 0,
-        lastUpdated: new Date().toISOString(),
-      };
-      await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
-      await fs.writeFile(CONFIG_PATH, JSON.stringify(payload, null, 2), "utf-8");
-    }
+    let existingData: any = {};
+    try {
+      const currentRaw = await fs.readFile(CONFIG_PATH, "utf-8");
+      existingData = JSON.parse(currentRaw);
+    } catch {}
+
+    const payload = {
+      rabItems: Array.isArray(rabItems) ? rabItems : (existingData.rabItems || []),
+      rabDiscount: typeof rabDiscount === "number" ? rabDiscount : (existingData.rabDiscount ?? 0),
+      rabPublicAccess: typeof rabPublicAccess === "boolean" ? rabPublicAccess : (existingData.rabPublicAccess ?? true),
+      adminPin: typeof adminPin === "string" && adminPin.trim() ? adminPin.trim() : (existingData.adminPin || "1987"),
+      lastUpdated: new Date().toISOString(),
+    };
+
+    await fs.mkdir(path.dirname(CONFIG_PATH), { recursive: true });
+    await fs.writeFile(CONFIG_PATH, JSON.stringify(payload, null, 2), "utf-8");
 
     // Check git status and push if there are changes
     const { stdout: statusOut } = await execAsync("git status --porcelain", {

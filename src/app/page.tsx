@@ -28,6 +28,15 @@ import {
   Maximize2,
   Repeat,
   Calculator,
+  Lock,
+  Unlock,
+  KeyRound,
+  ShieldAlert,
+  Eye,
+  EyeOff,
+  UserCheck,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import PrintProposalBooklet, { RabItem } from "@/components/PrintProposalBooklet";
 import type { CadSimulator3DRef } from "@/components/CadSimulator3D";
@@ -267,6 +276,17 @@ export default function HomePage() {
   const [gitSyncStatus, setGitSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
   const [lastGitSyncTime, setLastGitSyncTime] = useState<string | null>(null);
 
+  // Admin Authorization & Public Access Control State (RAB Only)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [rabPublicAccess, setRabPublicAccess] = useState<boolean>(true);
+  const [adminPin, setAdminPin] = useState<string>("1987");
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [loginPinInput, setLoginPinInput] = useState<string>("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [showPinVisible, setShowPinVisible] = useState<boolean>(false);
+  const [showChangePinModal, setShowChangePinModal] = useState<boolean>(false);
+  const [newPinInput, setNewPinInput] = useState<string>("");
+
   // Video Player state & refs (HP & Desktop)
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const videoCardRef = useRef<HTMLDivElement | null>(null);
@@ -288,6 +308,16 @@ export default function HomePage() {
   const cad3DRef = useRef<CadSimulator3DRef | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Check persisted admin session on client mount
+  useEffect(() => {
+    try {
+      const savedAdmin = sessionStorage.getItem("rab_auth_is_admin");
+      if (savedAdmin === "true") {
+        setIsAdmin(true);
+      }
+    } catch {}
+  }, []);
+
   // Measure viewport width so 2D SVG zoom has exact pixel dimensions on both HP and Desktop
   useEffect(() => {
     const updateBaseWidth = () => {
@@ -303,7 +333,7 @@ export default function HomePage() {
     return () => window.removeEventListener("resize", updateBaseWidth);
   }, [activeTab]);
 
-  // Load saved RAB from server (rab-config.json) or localStorage (v3 = 14 items Rp 99.500.000)
+  // Load saved RAB & Access Settings from server (rab-config.json) or localStorage
   useEffect(() => {
     fetch("/api/sync-git")
       .then((res) => res.json())
@@ -313,26 +343,39 @@ export default function HomePage() {
           setRabDiscount(typeof data.rabDiscount === "number" ? data.rabDiscount : 0);
           localStorage.setItem("rab_data_hut_pgri_v3", JSON.stringify(data.rabItems));
           localStorage.setItem("rab_discount_hut_pgri_v3", String(data.rabDiscount ?? 0));
-          return;
+        }
+        if (typeof data?.rabPublicAccess === "boolean") {
+          setRabPublicAccess(data.rabPublicAccess);
+          localStorage.setItem("rab_public_access", String(data.rabPublicAccess));
+        }
+        if (typeof data?.adminPin === "string" && data.adminPin) {
+          setAdminPin(data.adminPin);
+          localStorage.setItem("rab_admin_pin", data.adminPin);
         }
       })
       .catch(() => {
         try {
           const savedItems = localStorage.getItem("rab_data_hut_pgri_v3");
           const savedDiscount = localStorage.getItem("rab_discount_hut_pgri_v3");
-          if (savedItems) {
-            setRabItems(JSON.parse(savedItems));
-          }
-          if (savedDiscount !== null) {
-            setRabDiscount(parseInt(savedDiscount, 10) || 0);
-          }
+          const savedAccess = localStorage.getItem("rab_public_access");
+          const savedPin = localStorage.getItem("rab_admin_pin");
+          if (savedItems) setRabItems(JSON.parse(savedItems));
+          if (savedDiscount !== null) setRabDiscount(parseInt(savedDiscount, 10) || 0);
+          if (savedAccess !== null) setRabPublicAccess(savedAccess === "true");
+          if (savedPin) setAdminPin(savedPin);
         } catch (err) {
           console.warn("Error loading RAB from localStorage:", err);
         }
       });
   }, []);
 
-  const triggerGitSync = async (items: RabItem[], discount: number, manual = false) => {
+  const triggerGitSync = async (
+    items: RabItem[],
+    discount: number,
+    manual = false,
+    publicAccess = rabPublicAccess,
+    pin = adminPin
+  ) => {
     setGitSyncStatus("syncing");
     if (manual) {
       showToast("☁️ Menyimpan & melakukan Auto-Push ke GitHub...");
@@ -344,6 +387,8 @@ export default function HomePage() {
         body: JSON.stringify({
           rabItems: items,
           rabDiscount: discount,
+          rabPublicAccess: publicAccess,
+          adminPin: pin,
           commitMessage: `Update RAB & Desain via Portal Next.js (${new Date().toLocaleString("id-ID")})`,
         }),
       });
@@ -369,6 +414,11 @@ export default function HomePage() {
   };
 
   const persistRab = (items: RabItem[], discount: number) => {
+    if (!isAdmin) {
+      showToast("🔒 Mode Tamu (Hanya Lihat). Masuk sebagai Admin untuk menyimpan perubahan RAB.");
+      setShowLoginModal(true);
+      return;
+    }
     setRabItems(items);
     setRabDiscount(discount);
     try {
@@ -384,8 +434,63 @@ export default function HomePage() {
     }
     setGitSyncStatus("syncing");
     syncTimeoutRef.current = setTimeout(() => {
-      triggerGitSync(items, discount, false);
+      triggerGitSync(items, discount, false, rabPublicAccess, adminPin);
     }, 2000);
+  };
+
+  const handleAdminLogin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (loginPinInput.trim() === adminPin.trim()) {
+      setIsAdmin(true);
+      try {
+        sessionStorage.setItem("rab_auth_is_admin", "true");
+      } catch {}
+      setShowLoginModal(false);
+      setLoginPinInput("");
+      setLoginError(null);
+      showToast("👑 Mode Admin RAB Aktif! Anda kini memiliki akses penuh untuk edit & tambah item.");
+    } else {
+      setLoginError("PIN Admin salah. Silakan periksa kembali PIN Anda.");
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    try {
+      sessionStorage.removeItem("rab_auth_is_admin");
+    } catch {}
+    showToast("🔒 Mode Admin Non-Aktif. RAB kembali ke Mode Tamu (Hanya Lihat / Terkunci).");
+  };
+
+  const handleTogglePublicAccess = (newAccess: boolean) => {
+    if (!isAdmin) return;
+    setRabPublicAccess(newAccess);
+    try {
+      localStorage.setItem("rab_public_access", String(newAccess));
+    } catch {}
+    triggerGitSync(rabItems, rabDiscount, false, newAccess, adminPin);
+    showToast(
+      newAccess
+        ? "🔓 Izin Publik Dibuka: Pengunjung umum kini BISA MELIHAT rincian RAB (Hanya Lihat)."
+        : "🔒 Izin Publik Dikunci: Bagian RAB kini DISEMBUNYIKAN dari publik (Khusus Admin)."
+    );
+  };
+
+  const handleChangePin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = newPinInput.trim();
+    if (clean.length < 4) {
+      showToast("⚠️ PIN Admin minimal 4 digit karakter");
+      return;
+    }
+    setAdminPin(clean);
+    try {
+      localStorage.setItem("rab_admin_pin", clean);
+    } catch {}
+    setShowChangePinModal(false);
+    setNewPinInput("");
+    triggerGitSync(rabItems, rabDiscount, false, rabPublicAccess, clean);
+    showToast(`✅ PIN Admin berhasil diubah menjadi: ${clean}`);
   };
 
   const showToast = (msg: string) => {
@@ -2197,541 +2302,562 @@ export default function HomePage() {
         )}
 
         {/* ===================================================================== */}
-        {/* TAB 3: RENCANA ANGGARAN BIAYA (RAB) INTERAKTIF ENTERPRISE             */}
+        {/* TAB 3: RENCANA ANGGARAN BIAYA (RAB) DENGAN SISTEM OTORISASI ADMIN     */}
         {/* ===================================================================== */}
         {activeTab === "rab" && (
           <div className="space-y-4 sm:space-y-6">
-            {/* Header & Summary Card */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 sm:pb-5 border-b border-slate-800">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1.5 border border-amber-500/30">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>Kalkulator & Penganggaran EO Interaktif Real-Time</span>
+            {/* KONDISI 1: JIKA AKSES PUBLIK DIKUNCI TOTAL OLEH ADMIN & USER BELUM LOGIN */}
+            {!isAdmin && !rabPublicAccess ? (
+              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-rose-950/30 border-2 border-rose-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl text-center max-w-2xl mx-auto space-y-4 my-6">
+                <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 mx-auto flex items-center justify-center shadow-lg">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold uppercase tracking-wider border border-rose-500/40">
+                    <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span>Akses Rencana Anggaran Biaya (RAB) Dibatasi</span>
                   </div>
-                  <h2 className="text-lg sm:text-xl md:text-2xl font-black text-white">
-                    Rencana Anggaran Biaya (RAB) Pelaksanaan
+                  <h2 className="text-xl sm:text-2xl font-black text-white">
+                    RAB Hanya Dapat Dilihat & Diedit Atas Izin Admin
                   </h2>
-                  <p className="text-[11px] sm:text-xs text-slate-300 mt-1">
-                    Anda dapat mengedit <strong>Harga</strong>,{" "}
-                    <strong>Jumlah</strong>, maupun mengetik langsung di kolom{" "}
-                    <strong>Total (Rp)</strong>. Semua perubahan otomatis tersimpan.
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
+                    Bagian Rencana Anggaran Biaya (RAB) saat ini sedang dikunci oleh Admin Panitia untuk menjaga privasi dan validitas data penganggaran.
+                    <br /><br />
+                    <span className="text-slate-400 text-xs">
+                      ℹ️ Catatan: Menu Denah 2D, Video Drone Lokasi, dan Studio Visual 3D tetap terbuka bebas untuk dilihat umum.
+                    </span>
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
+                <div className="pt-2 flex justify-center">
                   <button
-                    onClick={addNewRabItem}
-                    className="px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    type="button"
+                    onClick={() => {
+                      setLoginError(null);
+                      setShowLoginModal(true);
+                    }}
+                    className="touch-manipulation px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm shadow-xl transition flex items-center gap-2 cursor-pointer border border-amber-300"
                   >
-                    <Plus className="w-3.5 h-3.5 shrink-0" />
-                    <span>Tambah Item</span>
-                  </button>
-
-                  <button
-                    onClick={exportRabToCsv}
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] sm:text-xs font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Export Excel</span>
-                  </button>
-
-                  <button
-                    onClick={handlePrintProposal}
-                    className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Printer className="w-3.5 h-3.5 shrink-0" />
-                    <span>Cetak RAB</span>
-                  </button>
-
-                  <button
-                    onClick={resetRabToDefault}
-                    className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-[11px] sm:text-xs font-medium rounded-xl border border-rose-800/40 transition flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                    <span>Reset</span>
+                    <KeyRound className="w-4 h-4 stroke-[3]" />
+                    <span>Masuk Sebagai Admin (Buka dengan PIN)</span>
                   </button>
                 </div>
               </div>
-
-              {/* 3 Summary Cards with Base vs Additional Breakdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-5">
-                <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
-                    Subtotal Rincian ({rabItems.length} Item Total)
-                  </span>
-                  <span className="text-xl sm:text-2xl font-black text-slate-100 mt-0.5 block">
-                    {formatRupiah(rawSubtotal)}
-                  </span>
-                  <div className="mt-1 space-y-0.5 text-[10px] sm:text-[11px]">
-                    <span className="text-slate-400 block">
-                      • 14 Item Utama: <strong className="text-slate-200">{formatRupiah(baseBudgetSubtotal)}</strong>
-                    </span>
-                    {additionalItemsCount > 0 ? (
-                      <span className="text-emerald-400 font-bold block">
-                        • +{additionalItemsCount} Item Tambahan: <strong>+{formatRupiah(additionalBudgetTotal)}</strong>
-                      </span>
-                    ) : (
-                      <span className="text-slate-500 italic block">
-                        • Belum ada item tambahan baru
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
-                  <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
-                    Potongan / Pembulatan Paket EO
-                  </span>
-                  <span className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 block">
-                    - {formatRupiah(rabDiscount)}
-                  </span>
-                  <span className="text-[10px] sm:text-[11px] text-slate-400 block mt-0.5">
-                    Opsional (dapat diisi pada baris potongan)
-                  </span>
-                </div>
-
-                <div className="bg-gradient-to-br from-amber-950/80 to-slate-950 p-3.5 sm:p-4 rounded-2xl border border-amber-500/50 shadow-lg">
-                  <span className="text-[11px] sm:text-xs text-amber-300 block font-bold uppercase tracking-wider flex items-center justify-between">
-                    <span>Total Keseluruhan RAB</span>
-                    <span className="text-[10px] text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40">
-                      Otomatis Terhitung
-                    </span>
-                  </span>
-                  <span className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 mt-0.5 block">
-                    {formatRupiah(grandTotal)}
-                  </span>
-                  <span className="text-[10px] sm:text-[11px] text-slate-300 italic block mt-0.5 truncate">
-                    &ldquo;{terbilangText}&rdquo;
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* =============================================================== */}
-            {/* ➕ MENU KHUSUS: FORM TAMBAH ITEM ANGGARAN BARU (OTOMATIS TERHITUNG) */}
-            {/* =============================================================== */}
-            <div
-              ref={addRabSectionRef}
-              className="bg-gradient-to-br from-slate-900 via-slate-950 to-amber-950/30 border-2 border-amber-500/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4"
-            >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-800">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 border border-amber-500/40">
-                    <Plus className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Menu Tambah Item Anggaran Baru</span>
-                  </div>
-                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                    <span>➕ Formulir Input Kebutuhan Anggaran Tambahan</span>
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
-                    Ketik nama item, harga, dan jumlah di bawah ini. Tambahan anggaran akan <strong>otomatis terhitung</strong> ke dalam Subtotal, Grand Total, dan dokumen proposal cetak.
-                  </p>
-                </div>
-
-                <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold shrink-0">
-                  ⚡ Real-Time Auto-Calc
-                </span>
-              </div>
-
-              {/* QUICK PRESET CHIPS */}
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-300/90 block mb-2">
-                  ⚡ Pilihan Cepat Kebutuhan EO Populer (Sekali Ketuk untuk Mengisi Form):
-                </span>
-                <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                  {OPTIONAL_EO_ITEMS.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => handleApplyPreset(preset)}
-                      className="touch-manipulation px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-semibold bg-slate-800/90 hover:bg-amber-950/60 active:bg-amber-900/60 border border-slate-700 hover:border-amber-400 text-slate-200 hover:text-amber-200 transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span>{preset.name}</span>
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                        ({formatRupiah(preset.price)})
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* INPUT FORM FIELDS */}
-              <form onSubmit={handleAddNewCustomItem} className="space-y-3.5 pt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                  {/* Nama Item */}
-                  <div className="sm:col-span-5">
-                    <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1">
-                      Nama Item Anggaran <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newItemName}
-                      onChange={(e) => setNewItemName(e.target.value)}
-                      placeholder="Contoh: Konsumsi Tamu VIP & Guru"
-                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 text-white font-semibold text-xs sm:text-sm rounded-xl px-3.5 py-2.5 outline-none transition placeholder:text-slate-500"
-                    />
-                  </div>
-
-                  {/* Harga Satuan */}
-                  <div className="sm:col-span-3">
-                    <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1">
-                      Harga Satuan (Rp) <span className="text-rose-400">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <span className="absolute left-3 text-slate-400 font-bold text-xs pointer-events-none">
-                        Rp
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={
-                          typeof newItemPrice === "number" && newItemPrice > 0
-                            ? newItemPrice.toLocaleString("id-ID")
-                            : ""
-                        }
-                        placeholder="0"
-                        onChange={(e) => {
-                          const raw = e.target.value.replace(/[^0-9]/g, "");
-                          setNewItemPrice(raw ? parseInt(raw, 10) : "");
-                        }}
-                        className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 text-amber-300 font-bold text-xs sm:text-sm rounded-xl pl-9 pr-3 py-2.5 text-right outline-none transition placeholder:text-slate-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Jumlah (Qty) */}
-                  <div className="sm:col-span-2">
-                    <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1 text-center sm:text-left">
-                      Jumlah (Qty)
-                    </label>
-                    <div className="flex items-center gap-1 bg-slate-950 border border-slate-700 rounded-xl p-1">
-                      <button
-                        type="button"
-                        onClick={() => setNewItemQty((q) => Math.max(1, q - 1))}
-                        className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center cursor-pointer shrink-0"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        min="1"
-                        value={newItemQty}
-                        onChange={(e) => setNewItemQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                        className="w-full bg-transparent text-center font-bold text-cyan-300 text-xs sm:text-sm outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setNewItemQty((q) => q + 1)}
-                        className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center cursor-pointer shrink-0"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Satuan */}
-                  <div className="sm:col-span-2">
-                    <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1">
-                      Satuan
-                    </label>
-                    <input
-                      type="text"
-                      value={newItemUnit}
-                      onChange={(e) => setNewItemUnit(e.target.value)}
-                      placeholder="paket / set / buah"
-                      className="w-full bg-slate-950 border border-slate-700 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2.5 text-center outline-none transition"
-                    />
-                  </div>
-                </div>
-
-                {/* LIVE AUTOMATIC CALCULATION PREVIEW BOX */}
-                {(() => {
-                  const unitVal = typeof newItemPrice === "number" ? Math.max(0, newItemPrice) : 0;
-                  const qtyVal = Math.max(1, newItemQty || 1);
-                  const previewSubtotal = unitVal * qtyVal;
-                  const previewNewGrandTotal = grandTotal + previewSubtotal;
-
-                  return (
-                    <div className="bg-slate-950/90 border border-amber-500/40 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                      <div className="space-y-1">
+            ) : (
+              <>
+                {/* STATUS BAR: ADMIN FULL ACCESS VS GUEST READ-ONLY */}
+                {isAdmin ? (
+                  <div className="bg-gradient-to-r from-emerald-950/90 via-slate-900 to-amber-950/70 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 flex items-center justify-center shrink-0">
+                        <UserCheck className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <div>
                         <div className="flex items-center gap-2">
-                          <Calculator className="w-4 h-4 text-amber-400 shrink-0" />
-                          <span className="text-xs font-bold text-slate-300">
-                            Kalkulasi Subtotal Item Ini:
+                          <span className="text-xs sm:text-sm font-black text-white">
+                            👑 MODE ADMIN AKTIF (AKSES PENUH)
                           </span>
-                          <span className="font-mono font-extrabold text-sm text-emerald-400">
-                            {formatRupiah(previewSubtotal)}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            ({formatRupiah(unitVal)} × {qtyVal} {newItemUnit || "paket"})
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500 text-slate-950">
+                            Terotentikasi
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-400">
-                          Total Anggaran Berjalan:{" "}
-                          <span className="text-slate-300 font-semibold">{formatRupiah(grandTotal)}</span>
-                          {" ➔ "}
-                          <span className="text-amber-400 font-bold">
-                            Menjadi {formatRupiah(previewNewGrandTotal)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 w-full md:w-auto">
-                        <button
-                          type="submit"
-                          className="touch-manipulation w-full md:w-auto px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-lg shadow-amber-950/60 transition flex items-center justify-center gap-2 cursor-pointer border border-amber-300"
-                        >
-                          <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
-                          <span>Tambahkan ke Anggaran & Hitung Otomatis</span>
-                        </button>
+                        <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
+                          Anda memiliki izin penuh untuk <strong>mengedit harga/jumlah</strong>, <strong>menambah item anggaran</strong>, serta mengatur visibilitas publik.
+                        </p>
                       </div>
                     </div>
-                  );
-                })()}
-              </form>
-            </div>
 
-            {/* MOBILE-FRIENDLY CARD VIEW (Tampil Otomatis di Layar HP agar Rapi & Tidak Perlu Geser Kiri-Kanan) */}
-            <div className="md:hidden space-y-3">
-              {rabItems.map((item, index) => {
-                const subtotal = (item.qty || 0) * (item.price || 0);
-                const isAdditional = !DEFAULT_RAB_IDS.has(item.id);
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePublicAccess(!rabPublicAccess)}
+                        className={`touch-manipulation px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
+                          rabPublicAccess
+                            ? "bg-slate-800 border-emerald-500/50 text-emerald-300 hover:bg-slate-700"
+                            : "bg-rose-950/80 border-rose-500/60 text-rose-300 hover:bg-rose-900/80"
+                        }`}
+                        title="Atur apakah publik boleh melihat RAB (Hanya Lihat) atau dikunci sepenuhnya"
+                      >
+                        {rabPublicAccess ? (
+                          <>
+                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Izin Publik: Boleh Lihat</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5 text-rose-400" />
+                            <span>Izin Publik: Dikunci</span>
+                          </>
+                        )}
+                      </button>
 
-                return (
-                  <div
-                    key={item.id}
-                    className={`bg-slate-900/95 border rounded-2xl p-3.5 shadow-lg space-y-2.5 ${
-                      isAdditional ? "border-amber-500/50 bg-amber-950/10" : "border-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black text-xs shrink-0">
-                          No. {index + 1}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewPinInput("");
+                          setShowChangePinModal(true);
+                        }}
+                        className="touch-manipulation px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+                        title="Ubah PIN Admin"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Ubah PIN</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleAdminLogout}
+                        className="touch-manipulation px-3.5 py-2 rounded-xl text-xs font-black bg-rose-600/90 hover:bg-rose-500 active:bg-rose-700 text-white transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                        title="Kunci kembali & keluar ke Mode Tamu"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Kunci & Keluar</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-slate-800 text-amber-400 flex items-center justify-center shrink-0 border border-slate-700">
+                        <Lock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                          <span>👀 Mode Tamu / Publik (Hanya Lihat)</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                            Read-Only
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Rincian anggaran dapat Anda tinjau & unduh. Pengeditan angka atau penambahan item hanya diizinkan untuk Admin Panitia.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginError(null);
+                        setShowLoginModal(true);
+                      }}
+                      className="touch-manipulation w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md border border-amber-300"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Masuk Sebagai Admin</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Header & Summary Card */}
+                <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 sm:pb-5 border-b border-slate-800">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1.5 border border-amber-500/30">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Kalkulator & Penganggaran EO Interaktif Real-Time</span>
+                      </div>
+                      <h2 className="text-lg sm:text-xl md:text-2xl font-black text-white">
+                        Rencana Anggaran Biaya (RAB) Pelaksanaan
+                      </h2>
+                      <p className="text-[11px] sm:text-xs text-slate-300 mt-1">
+                        {isAdmin ? (
+                          <>
+                            Anda berada dalam <strong>Mode Admin</strong>: dapat mengedit harga, jumlah, maupun mengetik langsung di kolom Total.
+                          </>
+                        ) : (
+                          <>
+                            Anda berada dalam <strong>Mode Tamu (Hanya Lihat)</strong>: seluruh angka anggaran terkunci aman dari perubahan yang tidak disengaja.
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
+                      {isAdmin ? (
+                        <button
+                          onClick={scrollToAddRabSection}
+                          className="px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-[11px] sm:text-xs font-black rounded-xl shadow-lg border border-amber-300 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Tambah Item</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setLoginError(null);
+                            setShowLoginModal(true);
+                          }}
+                          className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] sm:text-xs font-bold rounded-xl border border-amber-500/30 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          title="Masuk Sebagai Admin untuk Menambah Item"
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>Login Admin</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={exportRabToCsv}
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] sm:text-xs font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Export Excel</span>
+                      </button>
+
+                      <button
+                        onClick={handlePrintProposal}
+                        className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5 shrink-0" />
+                        <span>Cetak RAB</span>
+                      </button>
+
+                      {isAdmin && (
+                        <button
+                          onClick={resetRabToDefault}
+                          className="px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-[11px] sm:text-xs font-medium rounded-xl border border-rose-800/40 transition flex items-center justify-center gap-1 cursor-pointer"
+                          title="Kembalikan ke 14 item default (Admin)"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3 Summary Cards with Base vs Additional Breakdown */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-5">
+                    <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
+                      <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
+                        Subtotal Rincian ({rabItems.length} Item Total)
+                      </span>
+                      <span className="text-xl sm:text-2xl font-black text-slate-100 mt-0.5 block">
+                        {formatRupiah(rawSubtotal)}
+                      </span>
+                      <div className="mt-1 space-y-0.5 text-[10px] sm:text-[11px]">
+                        <span className="text-slate-400 block">
+                          • 14 Item Utama: <strong className="text-slate-200">{formatRupiah(baseBudgetSubtotal)}</strong>
                         </span>
-                        {isAdditional && (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold text-[10px] uppercase border border-emerald-500/30">
-                            Tambahan Baru
+                        {additionalItemsCount > 0 ? (
+                          <span className="text-emerald-400 font-bold block">
+                            • +{additionalItemsCount} Item Tambahan: <strong>+{formatRupiah(additionalBudgetTotal)}</strong>
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 italic block">
+                            • Belum ada item tambahan baru
                           </span>
                         )}
                       </div>
-                      <button
-                        onClick={() => deleteRabItem(item.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 transition"
-                        title="Hapus item"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
 
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
-                        Nama Item
-                      </label>
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) =>
-                          updateItemField(item.id, "name", e.target.value)
-                        }
-                        className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-6">
-                        <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
-                          Harga (Rp)
-                        </label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={
-                            item.price > 0
-                              ? item.price.toLocaleString("id-ID")
-                              : ""
-                          }
-                          placeholder="0"
-                          onChange={(e) => {
-                            const raw = e.target.value.replace(/[^0-9]/g, "");
-                            updateItemField(
-                              item.id,
-                              "price",
-                              raw ? parseInt(raw, 10) : 0
-                            );
-                          }}
-                          className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl px-2.5 py-2 text-right outline-none"
-                        />
-                      </div>
-
-                      <div className="col-span-3">
-                        <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
-                          Jumlah
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.qty}
-                          onChange={(e) =>
-                            updateItemField(
-                              item.id,
-                              "qty",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full bg-slate-950 border border-slate-700/80 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
-                        />
-                      </div>
-
-                      <div className="col-span-3">
-                        <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
-                          Satuan
-                        </label>
-                        <input
-                          type="text"
-                          value={item.unit}
-                          onChange={(e) =>
-                            updateItemField(item.id, "unit", e.target.value)
-                          }
-                          className="w-full bg-slate-950 border border-slate-700/80 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-slate-400">
-                        Total Item:
+                    <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
+                      <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
+                        Potongan / Pembulatan Paket EO
                       </span>
-                      <div className="relative flex items-center w-44">
-                        <span className="absolute left-3 text-emerald-400 font-bold text-xs pointer-events-none">
-                          Rp
+                      <span className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 block">
+                        - {formatRupiah(rabDiscount)}
+                      </span>
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 block mt-0.5">
+                        Opsional (dapat diisi pada baris potongan)
+                      </span>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-amber-950/80 to-slate-950 p-3.5 sm:p-4 rounded-2xl border border-amber-500/50 shadow-lg">
+                      <span className="text-[11px] sm:text-xs text-amber-300 block font-bold uppercase tracking-wider flex items-center justify-between">
+                        <span>Total Keseluruhan RAB</span>
+                        <span className="text-[10px] text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40">
+                          Otomatis Terhitung
                         </span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={
-                            subtotal > 0 ? subtotal.toLocaleString("id-ID") : ""
-                          }
-                          placeholder="0"
-                          onChange={(e) =>
-                            handleSubtotalDirectChange(item.id, e.target.value)
-                          }
-                          className="w-full bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-black text-xs rounded-xl pl-8 pr-2.5 py-1.5 text-right outline-none"
-                        />
-                      </div>
+                      </span>
+                      <span className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 mt-0.5 block">
+                        {formatRupiah(grandTotal)}
+                      </span>
+                      <span className="text-[10px] sm:text-[11px] text-slate-300 italic block mt-0.5 truncate">
+                        &ldquo;{terbilangText}&rdquo;
+                      </span>
                     </div>
                   </div>
-                );
-              })}
+                </div>
 
-              {/* Bottom Quick Add Button on Mobile */}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={scrollToAddRabSection}
-                  className="touch-manipulation flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-black text-xs transition flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                {/* =============================================================== */}
+                {/* ➕ MENU KHUSUS: FORM TAMBAH ITEM ANGGARAN (ADMIN ONLY)           */}
+                {/* =============================================================== */}
+                <div
+                  ref={addRabSectionRef}
+                  className="bg-gradient-to-br from-slate-900 via-slate-950 to-amber-950/30 border-2 border-amber-500/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4"
                 >
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>➕ Buka Menu Tambah Item Anggaran</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={addNewRabItem}
-                  className="touch-manipulation px-3.5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer border border-slate-700"
-                  title="Tambah Baris Kosong Cepat"
-                >
-                  <Plus className="w-4 h-4 text-emerald-400" />
-                  <span>Baris Cepat</span>
-                </button>
-              </div>
+                  {isAdmin ? (
+                    <>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-800">
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 border border-amber-500/40">
+                            <Plus className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>Menu Tambah Item Anggaran Baru</span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                            <span>➕ Formulir Input Kebutuhan Anggaran Tambahan</span>
+                          </h3>
+                          <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
+                            Ketik nama item, harga, dan jumlah di bawah ini. Tambahan anggaran akan <strong>otomatis terhitung</strong> ke dalam Subtotal, Grand Total, dan dokumen proposal cetak.
+                          </p>
+                        </div>
 
-              {/* Mobile Footer Total Card */}
-              <div className="bg-slate-950 border-2 border-amber-500/50 rounded-2xl p-4 shadow-xl space-y-2">
-                <div className="flex justify-between items-center text-xs text-slate-300">
-                  <span>14 Item Pokok:</span>
-                  <span className="font-semibold text-slate-200">{formatRupiah(baseBudgetSubtotal)}</span>
-                </div>
-                {additionalItemsCount > 0 && (
-                  <div className="flex justify-between items-center text-xs text-emerald-400">
-                    <span>+{additionalItemsCount} Item Tambahan Baru:</span>
-                    <span className="font-bold">+{formatRupiah(additionalBudgetTotal)}</span>
-                  </div>
-                )}
-                {rabDiscount > 0 && (
-                  <div className="flex justify-between items-center text-xs text-slate-400">
-                    <span>Potongan / Pembulatan:</span>
-                    <span className="font-semibold text-rose-300">-{formatRupiah(rabDiscount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-sm font-black text-amber-400 pt-2 border-t border-slate-800">
-                  <span>TOTAL ANGGARAN (OTOMATIS):</span>
-                  <span className="text-lg">{formatRupiah(grandTotal)}</span>
-                </div>
-                <div className="text-[10px] text-slate-400 italic text-right truncate">
-                  &ldquo;{terbilangText}&rdquo;
-                </div>
-              </div>
-            </div>
+                        <span className="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold shrink-0">
+                          ⚡ Real-Time Auto-Calc
+                        </span>
+                      </div>
 
-            {/* DESKTOP EXCEL-STYLE RAB TABLE (Exact Column Order: No | Nama Item | Harga | Jumlah | Satuan | Total) */}
-            <div className="hidden md:block bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden">
-              <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-950 text-slate-300 uppercase tracking-wider text-[11px] border-b border-slate-800">
-                      <th className="p-3 text-center w-12">No</th>
-                      <th className="p-3 min-w-[240px]">Nama Item</th>
-                      <th className="p-3 min-w-[170px] text-right">Harga</th>
-                      <th className="p-3 text-center w-24">Jumlah</th>
-                      <th className="p-3 text-center w-24">Satuan</th>
-                      <th className="p-3 min-w-[180px] text-right">Total</th>
-                      <th className="p-3 text-center w-24">Porsi</th>
-                      <th className="p-3 text-center w-14">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/80 bg-slate-900/60 text-slate-200">
-                    {rabItems.map((item, index) => {
-                      const subtotal = (item.qty || 0) * (item.price || 0);
-                      const pct =
-                        rawSubtotal > 0
-                          ? Math.round((subtotal / rawSubtotal) * 100)
-                          : 0;
-                      return (
-                        <tr
-                          key={item.id}
-                          className="hover:bg-slate-800/40 transition"
-                        >
-                          <td className="p-3 text-center text-slate-400 font-bold">
-                            {index + 1}
-                          </td>
-                          <td className="p-3">
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="text"
-                                value={item.name}
-                                onChange={(e) =>
-                                  updateItemField(item.id, "name", e.target.value)
-                                }
-                                className={`w-full bg-slate-950/70 border focus:border-amber-400 text-white font-semibold text-xs rounded-xl px-3 py-2 outline-none ${
-                                  !DEFAULT_RAB_IDS.has(item.id)
-                                    ? "border-amber-500/60"
-                                    : "border-slate-700/70"
-                                }`}
-                              />
-                              {!DEFAULT_RAB_IDS.has(item.id) && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                                  Baru
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3 text-right">
+                      {/* QUICK PRESET CHIPS */}
+                      <div>
+                        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-300/90 block mb-2">
+                          ⚡ Pilihan Cepat Kebutuhan EO Populer (Sekali Ketuk untuk Mengisi Form):
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                          {OPTIONAL_EO_ITEMS.map((preset) => (
+                            <button
+                              key={preset.name}
+                              type="button"
+                              onClick={() => handleApplyPreset(preset)}
+                              className="touch-manipulation px-2.5 sm:px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-semibold bg-slate-800/90 hover:bg-amber-950/60 active:bg-amber-900/60 border border-slate-700 hover:border-amber-400 text-slate-200 hover:text-amber-200 transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3 text-amber-400 shrink-0" />
+                              <span>{preset.name}</span>
+                              <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                                ({formatRupiah(preset.price)})
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* INPUT FORM FIELDS */}
+                      <form onSubmit={handleAddNewCustomItem} className="space-y-3.5 pt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                          {/* Nama Item */}
+                          <div className="sm:col-span-5">
+                            <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1">
+                              Nama Item Anggaran <span className="text-rose-400">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newItemName}
+                              onChange={(e) => setNewItemName(e.target.value)}
+                              placeholder="Contoh: Konsumsi Tamu VIP & Guru"
+                              className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 text-white font-semibold text-xs sm:text-sm rounded-xl px-3.5 py-2.5 outline-none transition placeholder:text-slate-500"
+                            />
+                          </div>
+
+                          {/* Harga Satuan */}
+                          <div className="sm:col-span-3">
+                            <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1">
+                              Harga Satuan (Rp) <span className="text-rose-400">*</span>
+                            </label>
                             <div className="relative flex items-center">
                               <span className="absolute left-3 text-slate-400 font-bold text-xs pointer-events-none">
                                 Rp
                               </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={
+                                  typeof newItemPrice === "number" && newItemPrice > 0
+                                    ? newItemPrice.toLocaleString("id-ID")
+                                    : ""
+                                }
+                                placeholder="0"
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(/[^0-9]/g, "");
+                                  setNewItemPrice(raw ? parseInt(raw, 10) : "");
+                                }}
+                                className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 text-amber-300 font-bold text-xs sm:text-sm rounded-xl pl-9 pr-3 py-2.5 text-right outline-none transition placeholder:text-slate-500"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Jumlah (Qty) */}
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1 text-center sm:text-left">
+                              Jumlah (Qty)
+                            </label>
+                            <div className="flex items-center gap-1 bg-slate-950 border border-slate-700 rounded-xl p-1">
+                              <button
+                                type="button"
+                                onClick={() => setNewItemQty((q) => Math.max(1, q - 1))}
+                                className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center cursor-pointer shrink-0"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={newItemQty}
+                                onChange={(e) => setNewItemQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                className="w-full bg-transparent text-center font-bold text-cyan-300 text-xs sm:text-sm outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setNewItemQty((q) => q + 1)}
+                                className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center justify-center cursor-pointer shrink-0"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Satuan */}
+                          <div className="sm:col-span-2">
+                            <label className="text-[10px] sm:text-[11px] uppercase tracking-wider text-slate-300 font-bold block mb-1">
+                              Satuan
+                            </label>
+                            <input
+                              type="text"
+                              value={newItemUnit}
+                              onChange={(e) => setNewItemUnit(e.target.value)}
+                              placeholder="paket / set / buah"
+                              className="w-full bg-slate-950 border border-slate-700 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2.5 text-center outline-none transition"
+                            />
+                          </div>
+                        </div>
+
+                        {/* LIVE AUTOMATIC CALCULATION PREVIEW BOX */}
+                        {(() => {
+                          const unitVal = typeof newItemPrice === "number" ? Math.max(0, newItemPrice) : 0;
+                          const qtyVal = Math.max(1, newItemQty || 1);
+                          const previewSubtotal = unitVal * qtyVal;
+                          const previewNewGrandTotal = grandTotal + previewSubtotal;
+
+                          return (
+                            <div className="bg-slate-950/90 border border-amber-500/40 rounded-2xl p-3 sm:p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Calculator className="w-4 h-4 text-amber-400 shrink-0" />
+                                  <span className="text-xs font-bold text-slate-300">
+                                    Kalkulasi Subtotal Item Ini:
+                                  </span>
+                                  <span className="font-mono font-extrabold text-sm text-emerald-400">
+                                    {formatRupiah(previewSubtotal)}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">
+                                    ({formatRupiah(unitVal)} × {qtyVal} {newItemUnit || "paket"})
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-400">
+                                  Total Anggaran Berjalan:{" "}
+                                  <span className="text-slate-300 font-semibold">{formatRupiah(grandTotal)}</span>
+                                  {" ➔ "}
+                                  <span className="text-amber-400 font-bold">
+                                    Menjadi {formatRupiah(previewNewGrandTotal)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 w-full md:w-auto">
+                                <button
+                                  type="submit"
+                                  className="touch-manipulation w-full md:w-auto px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-lg shadow-amber-950/60 transition flex items-center justify-center gap-2 cursor-pointer border border-amber-300"
+                                >
+                                  <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
+                                  <span>Tambahkan ke Anggaran & Hitung Otomatis</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </form>
+                    </>
+                  ) : (
+                    /* JIKA TAMU: FORM TERKUNCI DENGAN TOMBOL LOGIN ADMIN */
+                    <div className="py-4 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
+                        <Lock className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">
+                          Formulir Tambah Anggaran Terkunci untuk Tamu
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                          Untuk menambahkan item kebutuhan baru yang otomatis terhitung ke dalam anggaran, silakan masuk menggunakan PIN Admin.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginError(null);
+                          setShowLoginModal(true);
+                        }}
+                        className="touch-manipulation px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-bold text-xs transition inline-flex items-center gap-2 shadow-md cursor-pointer"
+                      >
+                        <KeyRound className="w-4 h-4 stroke-[3]" />
+                        <span>Buka Kunci Admin untuk Menambah Item</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* MOBILE-FRIENDLY CARD VIEW (Tampil Otomatis di Layar HP) */}
+                <div className="md:hidden space-y-3">
+                  {rabItems.map((item, index) => {
+                    const subtotal = (item.qty || 0) * (item.price || 0);
+                    const isAdditional = !DEFAULT_RAB_IDS.has(item.id);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`bg-slate-900/95 border rounded-2xl p-3.5 shadow-lg space-y-2.5 ${
+                          isAdditional ? "border-amber-500/50 bg-amber-950/10" : "border-slate-800"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-black text-xs shrink-0">
+                              No. {index + 1}
+                            </span>
+                            {isAdditional && (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold text-[10px] uppercase border border-emerald-500/30">
+                                Tambahan Baru
+                              </span>
+                            )}
+                          </div>
+                          {isAdmin ? (
+                            <button
+                              onClick={() => deleteRabItem(item.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 transition cursor-pointer"
+                              title="Hapus item (Admin)"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="p-1 text-slate-600" title="Terkunci (Hanya Lihat)">
+                              <Lock className="w-3.5 h-3.5" />
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                            Nama Item
+                          </label>
+                          {isAdmin ? (
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) =>
+                                updateItemField(item.id, "name", e.target.value)
+                              }
+                              className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none"
+                            />
+                          ) : (
+                            <div className="w-full bg-slate-950/60 border border-slate-800/80 text-white font-bold text-xs rounded-xl px-3 py-2 select-all">
+                              {item.name}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-12 gap-2">
+                          <div className="col-span-6">
+                            <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                              Harga (Rp)
+                            </label>
+                            {isAdmin ? (
                               <input
                                 type="text"
                                 inputMode="numeric"
@@ -2742,47 +2868,74 @@ export default function HomePage() {
                                 }
                                 placeholder="0"
                                 onChange={(e) => {
-                                  const raw = e.target.value.replace(
-                                    /[^0-9]/g,
-                                    ""
-                                  );
+                                  const raw = e.target.value.replace(/[^0-9]/g, "");
                                   updateItemField(
                                     item.id,
                                     "price",
                                     raw ? parseInt(raw, 10) : 0
                                   );
                                 }}
-                                className="w-full bg-slate-950/70 border border-slate-700/70 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl pl-9 pr-3 py-2 text-right outline-none"
+                                className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl px-2.5 py-2 text-right outline-none"
                               />
-                            </div>
-                          </td>
-                          <td className="p-3 text-center">
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.qty}
-                              onChange={(e) =>
-                                updateItemField(
-                                  item.id,
-                                  "qty",
-                                  parseFloat(e.target.value) || 0
-                                )
-                              }
-                              className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
-                            />
-                          </td>
-                          <td className="p-3 text-center">
-                            <input
-                              type="text"
-                              value={item.unit}
-                              onChange={(e) =>
-                                updateItemField(item.id, "unit", e.target.value)
-                              }
-                              className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
-                            />
-                          </td>
-                          <td className="p-3 text-right">
-                            <div className="relative flex items-center">
+                            ) : (
+                              <div className="w-full bg-slate-950/60 border border-slate-800/80 text-amber-300 font-bold text-xs rounded-xl px-2.5 py-2 text-right">
+                                {formatRupiah(item.price)}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="col-span-3">
+                            <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
+                              Jumlah
+                            </label>
+                            {isAdmin ? (
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.qty}
+                                onChange={(e) =>
+                                  updateItemField(
+                                    item.id,
+                                    "qty",
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                className="w-full bg-slate-950 border border-slate-700/80 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
+                              />
+                            ) : (
+                              <div className="w-full bg-slate-950/60 border border-slate-800/80 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center">
+                                {item.qty}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="col-span-3">
+                            <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
+                              Satuan
+                            </label>
+                            {isAdmin ? (
+                              <input
+                                type="text"
+                                value={item.unit}
+                                onChange={(e) =>
+                                  updateItemField(item.id, "unit", e.target.value)
+                                }
+                                className="w-full bg-slate-950 border border-slate-700/80 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
+                              />
+                            ) : (
+                              <div className="w-full bg-slate-950/60 border border-slate-800/80 text-slate-300 text-xs rounded-xl px-2 py-2 text-center">
+                                {item.unit}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-slate-400">
+                            Total Item:
+                          </span>
+                          {isAdmin ? (
+                            <div className="relative flex items-center w-44">
                               <span className="absolute left-3 text-emerald-400 font-bold text-xs pointer-events-none">
                                 Rp
                               </span>
@@ -2790,153 +2943,571 @@ export default function HomePage() {
                                 type="text"
                                 inputMode="numeric"
                                 value={
-                                  subtotal > 0
-                                    ? subtotal.toLocaleString("id-ID")
-                                    : ""
+                                  subtotal > 0 ? subtotal.toLocaleString("id-ID") : ""
                                 }
                                 placeholder="0"
                                 onChange={(e) =>
-                                  handleSubtotalDirectChange(
-                                    item.id,
-                                    e.target.value
-                                  )
+                                  handleSubtotalDirectChange(item.id, e.target.value)
                                 }
-                                className="w-full bg-slate-950/90 border border-emerald-500/30 focus:border-emerald-400 text-emerald-300 font-black text-xs rounded-xl pl-9 pr-3 py-2 text-right outline-none"
+                                className="w-full bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-black text-xs rounded-xl pl-8 pr-2.5 py-1.5 text-right outline-none"
                               />
                             </div>
+                          ) : (
+                            <div className="text-emerald-300 font-black text-xs bg-slate-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                              {formatRupiah(subtotal)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Bottom Quick Add Button on Mobile */}
+                  {isAdmin ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={scrollToAddRabSection}
+                        className="touch-manipulation flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-black text-xs transition flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                        <span>➕ Form Tambah Item Anggaran</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addNewRabItem}
+                        className="touch-manipulation px-3.5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer border border-slate-700"
+                        title="Tambah Baris Kosong Cepat"
+                      >
+                        <Plus className="w-4 h-4 text-emerald-400" />
+                        <span>Baris Cepat</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLoginError(null);
+                        setShowLoginModal(true);
+                      }}
+                      className="touch-manipulation w-full py-3 px-4 rounded-2xl bg-slate-900 border border-amber-500/40 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-slate-800"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                      <span>Masuk Sebagai Admin untuk Menambah Item</span>
+                    </button>
+                  )}
+
+                  {/* Mobile Footer Total Card */}
+                  <div className="bg-slate-950 border-2 border-amber-500/50 rounded-2xl p-4 shadow-xl space-y-2">
+                    <div className="flex justify-between items-center text-xs text-slate-300">
+                      <span>14 Item Pokok:</span>
+                      <span className="font-semibold text-slate-200">{formatRupiah(baseBudgetSubtotal)}</span>
+                    </div>
+                    {additionalItemsCount > 0 && (
+                      <div className="flex justify-between items-center text-xs text-emerald-400">
+                        <span>+{additionalItemsCount} Item Tambahan Baru:</span>
+                        <span className="font-bold">+{formatRupiah(additionalBudgetTotal)}</span>
+                      </div>
+                    )}
+                    {rabDiscount > 0 && (
+                      <div className="flex justify-between items-center text-xs text-slate-400">
+                        <span>Potongan / Pembulatan:</span>
+                        <span className="font-semibold text-rose-300">-{formatRupiah(rabDiscount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-sm font-black text-amber-400 pt-2 border-t border-slate-800">
+                      <span>TOTAL ANGGARAN (OTOMATIS):</span>
+                      <span className="text-lg">{formatRupiah(grandTotal)}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 italic text-right truncate">
+                      &ldquo;{terbilangText}&rdquo;
+                    </div>
+                  </div>
+                </div>
+
+                {/* DESKTOP EXCEL-STYLE RAB TABLE */}
+                <div className="hidden md:block bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-950 text-slate-300 uppercase tracking-wider text-[11px] border-b border-slate-800">
+                          <th className="p-3 text-center w-12">No</th>
+                          <th className="p-3 min-w-[240px]">Nama Item</th>
+                          <th className="p-3 min-w-[170px] text-right">Harga</th>
+                          <th className="p-3 text-center w-24">Jumlah</th>
+                          <th className="p-3 text-center w-24">Satuan</th>
+                          <th className="p-3 min-w-[180px] text-right">Total</th>
+                          <th className="p-3 text-center w-24">Porsi</th>
+                          <th className="p-3 text-center w-14">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/80 bg-slate-900/60 text-slate-200">
+                        {rabItems.map((item, index) => {
+                          const subtotal = (item.qty || 0) * (item.price || 0);
+                          const pct =
+                            rawSubtotal > 0
+                              ? Math.round((subtotal / rawSubtotal) * 100)
+                              : 0;
+                          const isAdditional = !DEFAULT_RAB_IDS.has(item.id);
+
+                          return (
+                            <tr
+                              key={item.id}
+                              className={`hover:bg-slate-800/40 transition ${
+                                isAdditional ? "bg-amber-950/10" : ""
+                              }`}
+                            >
+                              <td className="p-3 text-center text-slate-400 font-bold">
+                                {index + 1}
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1.5">
+                                  {isAdmin ? (
+                                    <input
+                                      type="text"
+                                      value={item.name}
+                                      onChange={(e) =>
+                                        updateItemField(item.id, "name", e.target.value)
+                                      }
+                                      className={`w-full bg-slate-950/70 border focus:border-amber-400 text-white font-semibold text-xs rounded-xl px-3 py-2 outline-none ${
+                                        isAdditional
+                                          ? "border-amber-500/60"
+                                          : "border-slate-700/70"
+                                      }`}
+                                    />
+                                  ) : (
+                                    <span className="font-semibold text-white select-all">
+                                      {item.name}
+                                    </span>
+                                  )}
+                                  {isAdditional && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                                      Baru
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                {isAdmin ? (
+                                  <div className="relative flex items-center">
+                                    <span className="absolute left-3 text-slate-400 font-bold text-xs pointer-events-none">
+                                      Rp
+                                    </span>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        item.price > 0
+                                          ? item.price.toLocaleString("id-ID")
+                                          : ""
+                                      }
+                                      placeholder="0"
+                                      onChange={(e) => {
+                                        const raw = e.target.value.replace(
+                                          /[^0-9]/g,
+                                          ""
+                                        );
+                                        updateItemField(
+                                          item.id,
+                                          "price",
+                                          raw ? parseInt(raw, 10) : 0
+                                        );
+                                      }}
+                                      className="w-full bg-slate-950/70 border border-slate-700/70 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl pl-9 pr-3 py-2 text-right outline-none"
+                                    />
+                                  </div>
+                                ) : (
+                                  <span className="font-mono font-bold text-amber-300">
+                                    {formatRupiah(item.price)}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {isAdmin ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={item.qty}
+                                    onChange={(e) =>
+                                      updateItemField(
+                                        item.id,
+                                        "qty",
+                                        parseFloat(e.target.value) || 0
+                                      )
+                                    }
+                                    className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
+                                  />
+                                ) : (
+                                  <span className="font-bold text-cyan-300">
+                                    {item.qty.toLocaleString("id-ID")}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {isAdmin ? (
+                                  <input
+                                    type="text"
+                                    value={item.unit}
+                                    onChange={(e) =>
+                                      updateItemField(item.id, "unit", e.target.value)
+                                    }
+                                    className="w-20 bg-slate-950/70 border border-slate-700/70 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
+                                  />
+                                ) : (
+                                  <span className="text-slate-300">{item.unit}</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-right">
+                                {isAdmin ? (
+                                  <div className="relative flex items-center">
+                                    <span className="absolute left-3 text-emerald-400 font-bold text-xs pointer-events-none">
+                                      Rp
+                                    </span>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        subtotal > 0
+                                          ? subtotal.toLocaleString("id-ID")
+                                          : ""
+                                      }
+                                      placeholder="0"
+                                      onChange={(e) =>
+                                        handleSubtotalDirectChange(
+                                          item.id,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full bg-slate-950/90 border border-emerald-500/30 focus:border-emerald-400 text-emerald-300 font-black text-xs rounded-xl pl-9 pr-3 py-2 text-right outline-none"
+                                    />
+                                  </div>
+                                ) : (
+                                  <span className="font-black text-emerald-300 font-mono">
+                                    {formatRupiah(subtotal)}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="text-[10px] font-mono text-slate-400">
+                                    {pct}%
+                                  </span>
+                                  <div className="w-14 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-amber-400 rounded-full"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                {isAdmin ? (
+                                  <button
+                                    onClick={() => deleteRabItem(item.id)}
+                                    className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-950/50 transition cursor-pointer"
+                                    title="Hapus baris (Admin)"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-600" title="Terkunci">
+                                    <Lock className="w-3.5 h-3.5 mx-auto" />
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-slate-900/95 font-semibold border-t border-slate-800 text-xs text-slate-300">
+                          <td colSpan={5} className="p-3 text-right uppercase">
+                            Subtotal 14 Item Pokok:
                           </td>
-                          <td className="p-3 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-[10px] font-mono text-slate-400">
-                                {pct}%
-                              </span>
-                              <div className="w-14 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-amber-400 rounded-full"
-                                  style={{ width: `${pct}%` }}
+                          <td className="p-3 text-right font-bold text-slate-200">
+                            {formatRupiah(baseBudgetSubtotal)}
+                          </td>
+                          <td colSpan={2}></td>
+                        </tr>
+                        {additionalItemsCount > 0 && (
+                          <tr className="bg-amber-950/20 font-semibold border-t border-slate-800 text-xs text-emerald-300">
+                            <td colSpan={5} className="p-3 text-right uppercase">
+                              + Tambahan {additionalItemsCount} Item Baru:
+                            </td>
+                            <td className="p-3 text-right font-black text-emerald-400">
+                              +{formatRupiah(additionalBudgetTotal)}
+                            </td>
+                            <td colSpan={2}></td>
+                          </tr>
+                        )}
+                        <tr className="bg-slate-900/90 font-semibold border-t border-slate-800 text-xs text-slate-300">
+                          <td colSpan={5} className="p-3 text-right uppercase">
+                            Subtotal Seluruh Rincian ({rabItems.length} Item):
+                          </td>
+                          <td className="p-3 text-right font-bold text-slate-200">
+                            {formatRupiah(rawSubtotal)}
+                          </td>
+                          <td colSpan={2}></td>
+                        </tr>
+                        <tr className="bg-slate-900/90 font-semibold border-t border-slate-800 text-xs text-emerald-300">
+                          <td colSpan={5} className="p-3 text-right uppercase">
+                            Potongan / Pembulatan Paket EO (Diskon):
+                          </td>
+                          <td className="p-3 text-right">
+                            {isAdmin ? (
+                              <div className="relative flex items-center justify-end">
+                                <span className="text-emerald-400 font-bold text-xs mr-1.5">
+                                  - Rp
+                                </span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={
+                                    rabDiscount > 0
+                                      ? rabDiscount.toLocaleString("id-ID")
+                                      : "0"
+                                  }
+                                  onChange={(e) => {
+                                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                                    persistRab(
+                                      rabItems,
+                                      raw ? parseInt(raw, 10) : 0
+                                    );
+                                  }}
+                                  className="w-32 bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg px-2.5 py-1.5 text-right outline-none"
                                 />
                               </div>
-                            </div>
+                            ) : (
+                              <span className="font-bold text-emerald-300 font-mono">
+                                - {formatRupiah(rabDiscount)}
+                              </span>
+                            )}
                           </td>
-                          <td className="p-3 text-center">
-                            <button
-                              onClick={() => deleteRabItem(item.id)}
-                              className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-rose-950/50 transition cursor-pointer"
-                              title="Hapus baris"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
+                          <td colSpan={2}></td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-900/95 font-semibold border-t border-slate-800 text-xs text-slate-300">
-                      <td colSpan={5} className="p-3 text-right uppercase">
-                        Subtotal 14 Item Pokok:
-                      </td>
-                      <td className="p-3 text-right font-bold text-slate-200">
-                        {formatRupiah(baseBudgetSubtotal)}
-                      </td>
-                      <td colSpan={2}></td>
-                    </tr>
-                    {additionalItemsCount > 0 && (
-                      <tr className="bg-amber-950/20 font-semibold border-t border-slate-800 text-xs text-emerald-300">
-                        <td colSpan={5} className="p-3 text-right uppercase">
-                          + Tambahan {additionalItemsCount} Item Baru:
-                        </td>
-                        <td className="p-3 text-right font-black text-emerald-400">
-                          +{formatRupiah(additionalBudgetTotal)}
-                        </td>
-                        <td colSpan={2}></td>
-                      </tr>
-                    )}
-                    <tr className="bg-slate-900/90 font-semibold border-t border-slate-800 text-xs text-slate-300">
-                      <td colSpan={5} className="p-3 text-right uppercase">
-                        Subtotal Seluruh Rincian ({rabItems.length} Item):
-                      </td>
-                      <td className="p-3 text-right font-bold text-slate-200">
-                        {formatRupiah(rawSubtotal)}
-                      </td>
-                      <td colSpan={2}></td>
-                    </tr>
-                    <tr className="bg-slate-900/90 font-semibold border-t border-slate-800 text-xs text-emerald-300">
-                      <td colSpan={5} className="p-3 text-right uppercase">
-                        Potongan / Pembulatan Paket EO (Diskon):
-                      </td>
-                      <td className="p-3 text-right">
-                        <div className="relative flex items-center justify-end">
-                          <span className="text-emerald-400 font-bold text-xs mr-1.5">
-                            - Rp
-                          </span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={
-                              rabDiscount > 0
-                                ? rabDiscount.toLocaleString("id-ID")
-                                : "0"
-                            }
-                            onChange={(e) => {
-                              const raw = e.target.value.replace(/[^0-9]/g, "");
-                              persistRab(
-                                rabItems,
-                                raw ? parseInt(raw, 10) : 0
-                              );
-                            }}
-                            className="w-32 bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg px-2.5 py-1.5 text-right outline-none"
-                          />
-                        </div>
-                      </td>
-                      <td colSpan={2}></td>
-                    </tr>
-                    <tr className="bg-slate-950 font-bold border-t-2 border-slate-700 text-sm">
-                      <td
-                        colSpan={5}
-                        className="p-4 text-right text-slate-200 uppercase tracking-wide"
-                      >
-                        Total Keseluruhan Anggaran (RAB Otomatis):
-                      </td>
-                      <td className="p-4 text-right text-xl font-black text-amber-400">
-                        {formatRupiah(grandTotal)}
-                      </td>
-                      <td colSpan={2}></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+                        <tr className="bg-slate-950 font-bold border-t-2 border-slate-700 text-sm">
+                          <td
+                            colSpan={5}
+                            className="p-4 text-right text-slate-200 uppercase tracking-wide"
+                          >
+                            Total Keseluruhan Anggaran (RAB Otomatis):
+                          </td>
+                          <td className="p-4 text-right text-xl font-black text-amber-400">
+                            {formatRupiah(grandTotal)}
+                          </td>
+                          <td colSpan={2}></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
 
-              {/* DESKTOP TABLE ACTION FOOTER */}
-              <div className="mt-4 pt-3.5 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div className="text-xs text-slate-400">
-                  💡 Tip: Gunakan <strong className="text-amber-400">&ldquo;➕ Menu Tambah Item Anggaran&rdquo;</strong> di atas untuk memasukkan kebutuhan baru dengan kalkulasi real-time.
+                  {/* DESKTOP TABLE ACTION FOOTER */}
+                  <div className="mt-4 pt-3.5 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="text-xs text-slate-400">
+                      {isAdmin ? (
+                        <>💡 Tip: Gunakan <strong className="text-amber-400">&ldquo;➕ Menu Tambah Item Anggaran&rdquo;</strong> di atas untuk memasukkan kebutuhan baru dengan kalkulasi real-time.</>
+                      ) : (
+                        <>🔒 Anda melihat dalam Mode Tamu. Rincian terlindungi dari perubahan yang tidak berwenang.</>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isAdmin ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={scrollToAddRabSection}
+                            className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
+                            <span>➕ Form Tambah Item Baru</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={addNewRabItem}
+                            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4 text-emerald-400" />
+                            <span>Tambah Baris Cepat</span>
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginError(null);
+                            setShowLoginModal(true);
+                          }}
+                          className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>Masuk Sebagai Admin untuk Mengedit</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={scrollToAddRabSection}
-                    className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
-                    <span>➕ Form Tambah Item Baru</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={addNewRabItem}
-                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4 text-emerald-400" />
-                    <span>Tambah Baris Cepat</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* ================= 7-PAGE PRINT PROPOSAL BOOKLET ================= */}
+      {/* ================= MODAL LOGIN ADMIN PIN ================= */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm no-print">
+          <div className="bg-slate-900 border-2 border-amber-500/60 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">
+                    Masuk Mode Admin RAB
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Otorisasi Khusus Edit & Tambah Anggaran
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLoginModal(false);
+                  setLoginError(null);
+                  setLoginPinInput("");
+                }}
+                className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  Masukkan PIN Admin:
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showPinVisible ? "text" : "password"}
+                    autoFocus
+                    value={loginPinInput}
+                    onChange={(e) => {
+                      setLoginPinInput(e.target.value);
+                      setLoginError(null);
+                    }}
+                    placeholder="Ketik PIN Admin..."
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 text-white font-mono font-bold text-center tracking-widest text-lg rounded-xl py-3 px-10 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPinVisible((v) => !v)}
+                    className="absolute right-3 text-slate-400 hover:text-slate-200"
+                  >
+                    {showPinVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {loginError && (
+                  <p className="text-xs text-rose-400 font-bold mt-1.5 flex items-center gap-1">
+                    <span>⚠️</span> <span>{loginError}</span>
+                  </p>
+                )}
+                <p className="text-[11px] text-slate-500 mt-2 text-center">
+                  Hanya panitia pelaksana/admin yang berwenang mengubah angka anggaran.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLoginModal(false);
+                    setLoginError(null);
+                    setLoginPinInput("");
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Unlock className="w-4 h-4 text-slate-950 stroke-[3]" />
+                  <span>Buka Akses Admin</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL UBAH PIN ADMIN ================= */}
+      {showChangePinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm no-print">
+          <div className="bg-slate-900 border-2 border-emerald-500/60 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">
+                    Ubah PIN Admin RAB
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Ganti PIN keamanan untuk melindungi RAB
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChangePinModal(false)}
+                className="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePin} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  Masukkan PIN Baru (Minimal 4 Karakter):
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newPinInput}
+                  onChange={(e) => setNewPinInput(e.target.value)}
+                  placeholder="Contoh: 2026 atau pgri79"
+                  className="w-full bg-slate-950 border border-slate-700 focus:border-emerald-400 text-white font-mono font-bold text-center text-lg rounded-xl py-3 px-4 outline-none"
+                />
+                <p className="text-[11px] text-slate-400 mt-2">
+                  PIN baru akan disimpan otomatis ke konfigurasi cloud repository.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePinModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4 stroke-[3]" />
+                  <span>Simpan PIN Baru</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       <PrintProposalBooklet
         rabItems={rabItems}
         rabDiscount={rabDiscount}
