@@ -248,6 +248,7 @@ export default function HomePage() {
   const [studioKey, setStudioKey] = useState<"front" | "side" | "rear" | "full">("front");
   const [external3DAngle, setExternal3DAngle] = useState<string | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1.0);
+  const [baseMapWidth, setBaseMapWidth] = useState<number>(360);
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const [showProcessionRoute, setShowProcessionRoute] = useState<boolean>(true);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -256,17 +257,33 @@ export default function HomePage() {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const svgViewportRef = useRef<HTMLDivElement | null>(null);
+  const tabContentRef = useRef<HTMLDivElement | null>(null);
   const panOriginRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
   const meteranRef = useRef<HTMLDivElement | null>(null);
   const cad3DRef = useRef<CadSimulator3DRef | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Measure viewport width so 2D SVG zoom has exact pixel dimensions on both HP and Desktop
+  useEffect(() => {
+    const updateBaseWidth = () => {
+      if (svgViewportRef.current && svgViewportRef.current.clientWidth > 100) {
+        const cw = svgViewportRef.current.clientWidth - 20;
+        setBaseMapWidth(Math.min(720, Math.max(280, cw)));
+      } else if (typeof window !== "undefined") {
+        setBaseMapWidth(window.innerWidth < 640 ? Math.max(280, window.innerWidth - 52) : 640);
+      }
+    };
+    updateBaseWidth();
+    window.addEventListener("resize", updateBaseWidth);
+    return () => window.removeEventListener("resize", updateBaseWidth);
+  }, [activeTab]);
 
   // Load saved RAB from server (rab-config.json) or localStorage (v3 = 14 items Rp 99.500.000)
   useEffect(() => {
     fetch("/api/sync-git")
       .then((res) => res.json())
       .then((data) => {
-        if (data?.ok && Array.isArray(data.rabItems) && data.rabItems.length > 0) {
+        if (Array.isArray(data?.rabItems) && data.rabItems.length > 0) {
           setRabItems(data.rabItems);
           setRabDiscount(typeof data.rabDiscount === "number" ? data.rabDiscount : 0);
           localStorage.setItem("rab_data_hut_pgri_v3", JSON.stringify(data.rabItems));
@@ -645,20 +662,33 @@ export default function HomePage() {
   };
 
   const currentRender = STUDIO_RENDERS[studioKey];
+  const svgPxWidth = Math.round(baseMapWidth * mapZoom);
+  const svgPxHeight = Math.round(svgPxWidth * (1020 / 440));
+
+  const handleSelectMainTab = (tab: "denah" | "render" | "rab") => {
+    setActiveTab(tab);
+    if (tab === "denah") {
+      showToast("📐 Menu 1 Aktif: Denah 2D Skematik & Meteran");
+    } else if (tab === "render") {
+      showToast("🎬 Menu 2 Aktif: Studio Visual 3D & Simulator CAD");
+    } else {
+      showToast("💰 Menu 3 Aktif: Rencana Anggaran Biaya (RAB)");
+    }
+  };
 
   return (
     <>
       {/* ================= FLOATING TOAST NOTIFICATION ================= */}
       {toastMsg && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900/95 border border-emerald-500/50 text-white text-xs font-bold shadow-2xl backdrop-blur-xl flex items-center gap-2.5 no-print">
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900/95 border border-emerald-500/50 text-white text-xs font-bold shadow-2xl backdrop-blur-xl flex items-center gap-2.5 pointer-events-none no-print">
           <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
           <span className="truncate">{toastMsg}</span>
         </div>
       )}
 
       {/* ================= STICKY GLASSMORPHIC TOP NAVBAR ================= */}
-      <div className="sticky top-0 z-40 bg-[#030712]/90 backdrop-blur-xl border-b border-slate-800/80 no-print">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="sticky top-0 z-40 bg-[#030712]/95 border-b border-slate-800/80 no-print">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[11px] sm:text-xs md:text-sm font-black tracking-wide uppercase text-white leading-snug">
               PORTAL PERENCANAAN EKSEKUTIF • HUT PGRI KE-79 & HGN
@@ -670,24 +700,27 @@ export default function HomePage() {
 
           <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
             <button
+              type="button"
               onClick={scrollToMeteranSection}
-              className="px-2.5 sm:px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
+              className="touch-manipulation px-2.5 sm:px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-amber-500/15 active:bg-amber-500/30 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
             >
               <Ruler className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="truncate">Meteran 96M</span>
             </button>
 
             <button
+              type="button"
               onClick={() => downloadDenahImage("poster")}
-              className="px-2.5 sm:px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
+              className="touch-manipulation px-2.5 sm:px-3.5 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-slate-800 active:bg-slate-700 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               <span className="truncate">Unduh 2D</span>
             </button>
 
             <button
+              type="button"
               onClick={handlePrintProposal}
-              className="px-2.5 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white shadow-lg shadow-emerald-950/60 border border-emerald-400/40 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
+              className="touch-manipulation px-2.5 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 active:from-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">Cetak PDF</span>
@@ -697,146 +730,116 @@ export default function HomePage() {
       </div>
 
       {/* ================= MAIN WEB CONTAINER ================= */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 no-print">
-        {/* HERO BANNER & EXECUTIVE KPI BENTO GRID */}
-        <header className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-[#091326] to-emerald-950/40 border border-slate-800/90 p-4 sm:p-6 md:p-8 shadow-2xl overflow-hidden">
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-800/80">
-            <div className="space-y-2 max-w-3xl">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
-                <Award className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">Masterplan Resmi • PGRI & HGN Kab. OKU Timur</span>
-              </div>
-              <h1 className="text-lg sm:text-2xl md:text-4xl font-black tracking-tight text-white leading-snug sm:leading-tight">
-                Arsitektur Tata Ruang 2D/3D CAD & Rencana Anggaran Biaya (RAB)
-              </h1>
-              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-                Sistem komando visual dan kalkulasi anggaran presisi untuk{" "}
-                <strong className="text-white">3.000 Peserta Guru</strong> di{" "}
-                <strong className="text-emerald-400">Lapangan SMAN 1 Belitang</strong>.
-                Terintegrasi dengan simulasi 3D nyata, panduan tarikan roll meteran panitia, dan dokumen proposal siap cetak.
-              </p>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-3.5 sm:py-6 space-y-4 sm:space-y-6 no-print">
+        {/* HERO BANNER WITH DIRECT TOP MENU RIGHT UNDER THE TITLE & DESCRIPTION */}
+        <header className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-[#091326] to-emerald-950/40 border border-slate-800/90 p-4 sm:p-6 md:p-7 shadow-2xl">
+          <div className="space-y-2 max-w-4xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+              <Award className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="truncate">Masterplan Resmi • PGRI & HGN Kab. OKU Timur</span>
             </div>
-
-            {/* Quick Action Pill to Open RAB Tab (WITHOUT exposing RAB numbers outside Tab 3) */}
-            <div
-              onClick={() => setActiveTab("rab")}
-              className="bg-slate-950/90 hover:bg-slate-950 border border-emerald-500/40 rounded-2xl p-3.5 sm:p-4 w-full lg:w-auto lg:min-w-[240px] shadow-xl cursor-pointer transition group flex lg:block items-center justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                  <span>Dokumen & Kalkulasi EO</span>
-                </div>
-                <div className="text-sm sm:text-lg font-black text-white mt-0.5">
-                  Buka Rincian RAB →
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-slate-400">
-                  Klik untuk melihat & edit anggaran
-                </div>
-              </div>
-              <ArrowUpRight className="w-5 h-5 text-emerald-400 lg:hidden shrink-0" />
-            </div>
+            <h1 className="text-lg sm:text-2xl md:text-4xl font-black tracking-tight text-white leading-snug sm:leading-tight">
+              Arsitektur Tata Ruang 2D/3D CAD & Rencana Anggaran Biaya (RAB)
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+              Sistem komando visual dan kalkulasi anggaran presisi untuk{" "}
+              <strong className="text-white">3.000 Peserta Guru</strong> di{" "}
+              <strong className="text-emerald-400">Lapangan SMAN 1 Belitang</strong>.
+              Terintegrasi dengan simulasi 3D nyata, panduan tarikan roll meteran panitia, dan dokumen proposal siap cetak.
+            </p>
           </div>
 
-          {/* 4 KPI Cards (Purely Technical Venue Metrics - Proportional on Mobile) */}
-          <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mt-4 sm:mt-6">
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
-              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
-                Total Kapasitas Kursi
-              </span>
-              <span className="text-base sm:text-xl md:text-2xl font-black text-amber-400 mt-0.5 block">
-                3.000+ Guru
-              </span>
-              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
-                Napolly BIG-208 + Sarung
-              </span>
+          {/* 3 MAIN NAVIGATION MENUS POSITIONED DIRECTLY BELOW DESCRIPTION */}
+          <div className="mt-4 pt-4 border-t border-slate-800/90">
+            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2.5 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Pilih Menu Utama (Ketuk Salah Satu Menu di Bawah Ini):</span>
             </div>
 
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
-              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
-                Tenda & Panggung
-              </span>
-              <span className="text-base sm:text-xl md:text-2xl font-black text-emerald-400 mt-0.5 block">
-                70 Plong & 6×8 M
-              </span>
-              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
-                + 2 Set Panggung 4×6 M
-              </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleSelectMainTab("denah")}
+                className={`touch-manipulation w-full px-4 py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-between gap-2 cursor-pointer border-2 ${
+                  activeTab === "denah"
+                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-950/70 border-emerald-300"
+                    : "bg-slate-900/95 hover:bg-slate-800 active:bg-slate-800 text-slate-200 border-slate-700/80"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Map className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-emerald-200" />
+                  <span className="truncate text-left">1. Denah 2D & Meteran (96,15 M)</span>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
+                    activeTab === "denah"
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {activeTab === "denah" ? "AKTIF" : "BUKA"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectMainTab("render")}
+                className={`touch-manipulation w-full px-4 py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-between gap-2 cursor-pointer border-2 ${
+                  activeTab === "render"
+                    ? "bg-cyan-600 text-white shadow-lg shadow-cyan-950/70 border-cyan-300"
+                    : "bg-slate-900/95 hover:bg-slate-800 active:bg-slate-800 text-slate-200 border-slate-700/80"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Box className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-cyan-200" />
+                  <span className="truncate text-left">2. Studio Visual 3D & CAD 360°</span>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
+                    activeTab === "render"
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {activeTab === "render" ? "AKTIF" : "BUKA"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectMainTab("rab")}
+                className={`touch-manipulation w-full px-4 py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-between gap-2 cursor-pointer border-2 ${
+                  activeTab === "rab"
+                    ? "bg-amber-600 text-white shadow-lg shadow-amber-950/70 border-amber-300"
+                    : "bg-slate-900/95 hover:bg-slate-800 active:bg-slate-800 text-slate-200 border-slate-700/80"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Wallet className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-amber-200" />
+                  <span className="truncate text-left">3. Rencana Anggaran Biaya (RAB)</span>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
+                    activeTab === "rab"
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {activeTab === "rab" ? "AKTIF" : "BUKA"}
+                </span>
+              </button>
             </div>
-
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
-              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
-                Bentang Lapangan
-              </span>
-              <span className="text-base sm:text-xl md:text-2xl font-black text-cyan-400 mt-0.5 block">
-                22 × 96,15 M
-              </span>
-              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
-                89 Baris × 34 Kursi
-              </span>
-            </div>
-
-            <div className="bg-slate-950/70 backdrop-blur border border-slate-800/80 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
-              <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium block truncate">
-                Multimedia & Tata Ruang
-              </span>
-              <span className="text-base sm:text-xl md:text-2xl font-black text-indigo-400 mt-0.5 block">
-                Videotron 3×5 M
-              </span>
-              <span className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 block truncate">
-                Taman, Sound & Lighting
-              </span>
-            </div>
-          </div>
-
-          {/* Primary Navigation Tabs (Stacked Full-Width on Mobile, Inline on Desktop) */}
-          <div className="relative z-10 grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 mt-4 sm:mt-6">
-            <button
-              onClick={() => setActiveTab("denah")}
-              className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center sm:justify-start gap-2 cursor-pointer ${
-                activeTab === "denah"
-                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-950/60 border border-emerald-400/50"
-                  : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700"
-              }`}
-            >
-              <Map className="w-4 h-4 shrink-0" />
-              <span>1. Denah 2D Skematik & Meteran (96,15 M)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("render")}
-              className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center sm:justify-start gap-2 cursor-pointer ${
-                activeTab === "render"
-                  ? "bg-cyan-600 text-white shadow-lg shadow-cyan-950/60 border border-cyan-400/50"
-                  : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700"
-              }`}
-            >
-              <Box className="w-4 h-4 shrink-0" />
-              <span>2. Studio Visual 3D & Simulator CAD 360°</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("rab")}
-              className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center sm:justify-start gap-2 cursor-pointer ${
-                activeTab === "rab"
-                  ? "bg-amber-600 text-white shadow-lg shadow-amber-950/60 border border-amber-400/50"
-                  : "bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700"
-              }`}
-            >
-              <Wallet className="w-4 h-4 shrink-0" />
-              <span>3. Rencana Anggaran Biaya (RAB)</span>
-            </button>
           </div>
         </header>
+
+        <div ref={tabContentRef} />
 
         {/* ===================================================================== */}
         {/* TAB 1: DENAH 2D SKEMATIK & PATOKAN METERAN LAPANGAN                   */}
         {/* ===================================================================== */}
         {activeTab === "denah" && (
           <div className="space-y-4 sm:space-y-6">
-            {/* FULL-WIDTH INTERACTIVE 2D CAD MAP WITH GUARANTEED MOBILE & DESKTOP ZOOM */}
+            {/* FULL-WIDTH INTERACTIVE 2D CAD MAP WITH GUARANTEED PIXEL ZOOM */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 md:p-6 shadow-2xl">
               <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-800">
                 <div>
@@ -854,7 +857,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setShowProcessionRoute((v) => !v)}
-                    className={`px-2.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                    className={`touch-manipulation px-2.5 py-2 rounded-xl text-[11px] sm:text-xs font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
                       showProcessionRoute
                         ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
                         : "bg-slate-800 border-slate-700 text-slate-400"
@@ -867,7 +870,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => downloadDenahImage("poster")}
-                    className="px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1 cursor-pointer"
+                    className="touch-manipulation px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-lg border border-emerald-400/40 transition flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">PNG HD</span>
@@ -876,7 +879,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={downloadDenahSvg}
-                    className="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] sm:text-xs font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 cursor-pointer"
+                    className="touch-manipulation px-2.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] sm:text-xs font-bold rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <FileCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <span>SVG</span>
@@ -890,7 +893,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setMapZoom((z) => Math.max(1.0, +(z - 0.5).toFixed(2)))}
-                    className="px-3 py-2 bg-slate-800 active:bg-slate-700 hover:bg-slate-700 rounded-xl text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer border border-slate-700 shrink-0"
+                    className="touch-manipulation px-3 py-2 bg-slate-800 active:bg-slate-700 hover:bg-slate-700 rounded-xl text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer border border-slate-700 shrink-0"
                   >
                     <ZoomOut className="w-4 h-4 text-amber-400" />
                     <span>Perkecil (-)</span>
@@ -914,7 +917,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setMapZoom((z) => Math.min(4.0, +(z + 0.5).toFixed(2)))}
-                    className="px-3 py-2 bg-emerald-600 active:bg-emerald-500 hover:bg-emerald-500 rounded-xl text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md shrink-0"
+                    className="touch-manipulation px-3 py-2 bg-emerald-600 active:bg-emerald-500 hover:bg-emerald-500 rounded-xl text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-md shrink-0"
                   >
                     <ZoomIn className="w-4 h-4" />
                     <span>Perbesar (+)</span>
@@ -936,7 +939,7 @@ export default function HomePage() {
                         key={preset.label}
                         type="button"
                         onClick={() => setMapZoom(preset.val)}
-                        className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition cursor-pointer text-center border ${
+                        className={`touch-manipulation py-2 px-1 rounded-xl text-[11px] sm:text-xs font-extrabold transition cursor-pointer text-center border ${
                           isSelected
                             ? "bg-emerald-600 text-white border-emerald-400 shadow-md"
                             : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
@@ -949,7 +952,7 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* SVG Viewport with Block Percentage Scaling (Guaranteed to Enlarge on HP & Desktop) */}
+              {/* SVG Viewport with Exact Pixel Dimensions (Guaranteed to Resize on Every Mobile Browser) */}
               <div className="relative">
                 <div
                   ref={svgViewportRef}
@@ -958,19 +961,24 @@ export default function HomePage() {
                 >
                   <div
                     style={{
-                      width: `${Math.round(mapZoom * 100)}%`,
-                      minWidth: `${Math.round(mapZoom * 100)}%`,
-                      maxWidth: "none",
+                      width: `${svgPxWidth}px`,
+                      height: `${svgPxHeight}px`,
+                      minWidth: `${svgPxWidth}px`,
+                      minHeight: `${svgPxHeight}px`,
                     }}
                     className="mx-auto block"
                   >
                     <svg
                       ref={svgRef}
                       id="denahSvg"
+                      width={svgPxWidth}
+                      height={svgPxHeight}
                       viewBox="0 0 440 1020"
                       style={{
-                        width: "100%",
-                        height: "auto",
+                        width: `${svgPxWidth}px`,
+                        height: `${svgPxHeight}px`,
+                        minWidth: `${svgPxWidth}px`,
+                        minHeight: `${svgPxHeight}px`,
                         maxWidth: "none",
                         display: "block",
                         fontFamily:
