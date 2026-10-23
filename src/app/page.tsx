@@ -490,8 +490,8 @@ export default function HomePage() {
     triggerGitSync(rabItems, rabDiscount, false, newAccess, adminPin);
     showToast(
       newAccess
-        ? "🔓 Izin Publik Dibuka: Pengunjung umum kini BISA MELIHAT rincian RAB (Hanya Lihat)."
-        : "🔒 Izin Publik Dikunci: Bagian RAB kini DISEMBUNYIKAN dari publik (Khusus Admin)."
+        ? "🔓 Izin Publik Diberikan: Pengunjung umum sekarang BISA LANGSUNG MELIHAT RAB tanpa PIN (Mode Read-Only / Hanya Lihat, tidak bisa edit)."
+        : "🔒 Izin Publik Dicabut: Menu RAB kini KOSONG & TERKUNCI untuk publik (Wajib PIN Admin)."
     );
   };
 
@@ -2456,22 +2456,22 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => handleTogglePublicAccess(!rabPublicAccess)}
-                        className={`touch-manipulation px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
+                        className={`touch-manipulation px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
                           rabPublicAccess
-                            ? "bg-slate-800 border-emerald-500/50 text-emerald-300 hover:bg-slate-700"
+                            ? "bg-emerald-950/80 border-emerald-500/60 text-emerald-300 hover:bg-emerald-900/80"
                             : "bg-rose-950/80 border-rose-500/60 text-rose-300 hover:bg-rose-900/80"
                         }`}
-                        title="Atur apakah publik boleh melihat RAB (Hanya Lihat) atau dikunci sepenuhnya"
+                        title="Atur izin akses publik: jika dibuka, user bisa melihat tanpa PIN (Read-Only). Jika dikunci, menu kosong."
                       >
                         {rabPublicAccess ? (
                           <>
                             <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Izin Publik: Boleh Lihat</span>
+                            <span>Izin Publik: Boleh Dilihat (Read-Only)</span>
                           </>
                         ) : (
                           <>
                             <EyeOff className="w-3.5 h-3.5 text-rose-400" />
-                            <span>Izin Publik: Dikunci</span>
+                            <span>Izin Publik: Dikunci (Kosong)</span>
                           </>
                         )}
                       </button>
@@ -2501,20 +2501,20 @@ export default function HomePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+                  <div className="bg-slate-900/95 border border-emerald-500/40 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-slate-800 text-amber-400 flex items-center justify-center shrink-0 border border-slate-700">
-                        <Lock className="w-4 h-4" />
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                        <Eye className="w-4 h-4" />
                       </div>
                       <div>
                         <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
                           <span>👀 Mode Tamu / Publik (Hanya Lihat)</span>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                            Read-Only
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            Read-Only (Bebas PIN)
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          Rincian anggaran dapat Anda tinjau & unduh. Pengeditan angka atau penambahan item hanya diizinkan untuk Admin Panitia.
+                        <p className="text-[11px] text-slate-300 mt-0.5">
+                          Admin telah mengizinkan Anda melihat seluruh rincian RAB tanpa PIN. Dokumen ini berstatus <strong>Hanya Lihat (Read-Only)</strong> — penambahan atau pengeditan item hanya dapat dilakukan oleh Admin.
                         </p>
                       </div>
                     </div>
@@ -2525,10 +2525,10 @@ export default function HomePage() {
                         setLoginError(null);
                         setShowLoginModal(true);
                       }}
-                      className="touch-manipulation w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md border border-amber-300"
+                      className="touch-manipulation w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shrink-0"
                     >
-                      <KeyRound className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Masuk Sebagai Admin</span>
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Login Admin (Edit / Tambah)</span>
                     </button>
                   </div>
                 )}
