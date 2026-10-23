@@ -37,6 +37,7 @@ import {
   UserCheck,
   LogOut,
   Settings,
+  Share2,
 } from "lucide-react";
 import PrintProposalBooklet, { RabItem } from "@/components/PrintProposalBooklet";
 import type { CadSimulator3DRef } from "@/components/CadSimulator3D";
@@ -278,7 +279,7 @@ export default function HomePage() {
 
   // Admin Authorization & Public Access Control State (RAB Only)
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [rabPublicAccess, setRabPublicAccess] = useState<boolean>(false);
+  const [rabPublicAccess, setRabPublicAccess] = useState<boolean>(true);
   const [adminPin, setAdminPin] = useState<string>("10603301");
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [loginPinInput, setLoginPinInput] = useState<string>("");
@@ -308,7 +309,7 @@ export default function HomePage() {
   const cad3DRef = useRef<CadSimulator3DRef | null>(null);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Check persisted admin session on client mount
+  // Check persisted admin session & URL access query on client mount
   useEffect(() => {
     try {
       const savedAdmin = sessionStorage.getItem("rab_auth_is_admin");
@@ -316,6 +317,25 @@ export default function HomePage() {
         setIsAdmin(true);
       }
     } catch {}
+
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("rab") === "locked") {
+        setRabPublicAccess(false);
+        try {
+          localStorage.setItem("rab_public_access", "false");
+        } catch {}
+      } else if (
+        urlParams.get("rab") === "open" ||
+        urlParams.get("access") === "public" ||
+        urlParams.get("view") === "rab"
+      ) {
+        setRabPublicAccess(true);
+        try {
+          localStorage.setItem("rab_public_access", "true");
+        } catch {}
+      }
+    }
   }, []);
 
   // Measure viewport width so 2D SVG zoom has exact pixel dimensions on both HP and Desktop
@@ -356,8 +376,8 @@ export default function HomePage() {
           setRabPublicAccess(data.rabPublicAccess);
           localStorage.setItem("rab_public_access", String(data.rabPublicAccess));
         } else {
-          setRabPublicAccess(false);
-          localStorage.setItem("rab_public_access", "false");
+          setRabPublicAccess(true);
+          localStorage.setItem("rab_public_access", "true");
         }
         if (typeof data?.adminPin === "string" && data.adminPin && data.adminPin !== "1987") {
           setAdminPin(data.adminPin);
@@ -375,7 +395,11 @@ export default function HomePage() {
           const savedPin = localStorage.getItem("rab_admin_pin");
           if (savedItems) setRabItems(JSON.parse(savedItems));
           if (savedDiscount !== null) setRabDiscount(parseInt(savedDiscount, 10) || 0);
-          if (savedAccess !== null) setRabPublicAccess(savedAccess === "true");
+          if (savedAccess !== null) {
+            setRabPublicAccess(savedAccess === "true");
+          } else {
+            setRabPublicAccess(true);
+          }
           if (savedPin && savedPin !== "1987") {
             setAdminPin(savedPin);
           } else {
@@ -568,7 +592,7 @@ export default function HomePage() {
   const scrollToAddRabSection = () => {
     setActiveTab("rab");
     if (!isAdmin) {
-      showToast("🔒 Fitur Tambah & Edit Anggaran khusus Admin. Masukkan PIN Admin (10603301).");
+      showToast("🔒 Fitur Tambah & Edit Anggaran khusus Admin Panitia.");
       setShowLoginModal(true);
       return;
     }
@@ -976,7 +1000,7 @@ export default function HomePage() {
                   setShowLoginModal(true);
                 }}
                 className="touch-manipulation px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold bg-amber-500/15 active:bg-amber-500/30 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition flex items-center justify-center gap-1 cursor-pointer shadow-sm"
-                title="Masuk Sebagai Admin untuk Buka & Edit RAB (PIN: 10603301)"
+                title="Masuk Sebagai Admin (Untuk Edit & Tambah RAB)"
               >
                 <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>Login Admin RAB</span>
@@ -1145,13 +1169,13 @@ export default function HomePage() {
                     </>
                   ) : (
                     <>
-                      <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="truncate">🔒 Menu RAB Terkunci (Login Admin untuk Akses)</span>
+                      <Wallet className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="truncate">📋 Rincian Rencana Anggaran Biaya (RAB)</span>
                     </>
                   )}
                 </div>
                 <span className="text-[10px] font-mono text-amber-300 bg-amber-900/80 px-2 py-0.5 rounded shrink-0">
-                  {isAdmin ? "Admin" : "PIN: 10603301"}
+                  {isAdmin ? "Mode Admin" : "Hanya Lihat"}
                 </span>
               </button>
             </div>
@@ -2474,6 +2498,25 @@ export default function HomePage() {
                             <span>Izin Publik: Dikunci (Kosong)</span>
                           </>
                         )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            const url = `${window.location.origin}${window.location.pathname}?rab=open`;
+                            navigator.clipboard.writeText(url).then(() => {
+                              showToast("📋 Link RAB Boleh Lihat disalin! Siap dibagikan ke pengunjung.");
+                            }).catch(() => {
+                              showToast("📋 Link: " + url);
+                            });
+                          }
+                        }}
+                        className="touch-manipulation px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/40 transition flex items-center gap-1.5 cursor-pointer"
+                        title="Salin link terbuka langsung tanpa PIN untuk dibagikan ke pengunjung"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>Salin Link Publik</span>
                       </button>
 
                       <button
