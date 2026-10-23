@@ -857,32 +857,6 @@ export default function PrintProposalBooklet({
                       </tr>
                     );
                   })}
-                  {rabDiscount > 0 && (
-                    <>
-                      <tr className="bg-slate-100/80 border-t border-slate-300">
-                        <td
-                          colSpan={5}
-                          className="p-2 border-r border-slate-300 text-right font-bold text-slate-700"
-                        >
-                          Subtotal Rincian Item:
-                        </td>
-                        <td className="p-2 text-right font-bold text-slate-800">
-                          {formatRupiah(rawSubtotal)}
-                        </td>
-                      </tr>
-                      <tr className="bg-emerald-50/60">
-                        <td
-                          colSpan={5}
-                          className="p-2 border-r border-slate-300 text-right font-bold text-emerald-800"
-                        >
-                          Potongan / Pembulatan Paket EO:
-                        </td>
-                        <td className="p-2 text-right font-bold text-emerald-800">
-                          - {formatRupiah(rabDiscount)}
-                        </td>
-                      </tr>
-                    </>
-                  )}
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-100 font-bold border-t-2 border-slate-400 text-xs">

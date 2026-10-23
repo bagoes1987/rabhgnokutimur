@@ -2609,8 +2609,8 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* 3 Summary Cards with Base vs Additional Breakdown */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-5">
+                  {/* 2 Summary Cards with Base vs Additional Breakdown (Tanpa Potongan EO) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-4 sm:mt-5">
                     <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
                       <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
                         Subtotal Rincian ({rabItems.length} Item Total)
@@ -2632,18 +2632,6 @@ export default function HomePage() {
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800">
-                      <span className="text-[11px] sm:text-xs text-slate-400 block font-medium">
-                        Potongan / Pembulatan Paket EO
-                      </span>
-                      <span className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 block">
-                        - {formatRupiah(rabDiscount)}
-                      </span>
-                      <span className="text-[10px] sm:text-[11px] text-slate-400 block mt-0.5">
-                        Opsional (dapat diisi pada baris potongan)
-                      </span>
                     </div>
 
                     <div className="bg-gradient-to-br from-amber-950/80 to-slate-950 p-3.5 sm:p-4 rounded-2xl border border-amber-500/50 shadow-lg">
@@ -3094,12 +3082,6 @@ export default function HomePage() {
                         <span className="font-bold">+{formatRupiah(additionalBudgetTotal)}</span>
                       </div>
                     )}
-                    {rabDiscount > 0 && (
-                      <div className="flex justify-between items-center text-xs text-slate-400">
-                        <span>Potongan / Pembulatan:</span>
-                        <span className="font-semibold text-rose-300">-{formatRupiah(rabDiscount)}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between items-center text-sm font-black text-amber-400 pt-2 border-t border-slate-800">
                       <span>TOTAL ANGGARAN (OTOMATIS):</span>
                       <span className="text-lg">{formatRupiah(grandTotal)}</span>
@@ -3331,42 +3313,6 @@ export default function HomePage() {
                           </td>
                           <td className="p-3 text-right font-bold text-slate-200">
                             {formatRupiah(rawSubtotal)}
-                          </td>
-                          <td colSpan={2}></td>
-                        </tr>
-                        <tr className="bg-slate-900/90 font-semibold border-t border-slate-800 text-xs text-emerald-300">
-                          <td colSpan={5} className="p-3 text-right uppercase">
-                            Potongan / Pembulatan Paket EO (Diskon):
-                          </td>
-                          <td className="p-3 text-right">
-                            {isAdmin ? (
-                              <div className="relative flex items-center justify-end">
-                                <span className="text-emerald-400 font-bold text-xs mr-1.5">
-                                  - Rp
-                                </span>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  value={
-                                    rabDiscount > 0
-                                      ? rabDiscount.toLocaleString("id-ID")
-                                      : "0"
-                                  }
-                                  onChange={(e) => {
-                                    const raw = e.target.value.replace(/[^0-9]/g, "");
-                                    persistRab(
-                                      rabItems,
-                                      raw ? parseInt(raw, 10) : 0
-                                    );
-                                  }}
-                                  className="w-32 bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-bold text-xs rounded-lg px-2.5 py-1.5 text-right outline-none"
-                                />
-                              </div>
-                            ) : (
-                              <span className="font-bold text-emerald-300 font-mono">
-                                - {formatRupiah(rabDiscount)}
-                              </span>
-                            )}
                           </td>
                           <td colSpan={2}></td>
                         </tr>
