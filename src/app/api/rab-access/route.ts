@@ -28,7 +28,7 @@ export async function GET() {
   const fallback =
     typeof defaultRabConfig.rabPublicAccess === "boolean"
       ? defaultRabConfig.rabPublicAccess
-      : true;
+      : false;
   return NextResponse.json(
     { rabPublicAccess: fallback },
     { headers: { "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate" } }

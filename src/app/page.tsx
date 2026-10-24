@@ -279,7 +279,7 @@ export default function HomePage() {
 
   // Admin Authorization & Public Access Control State (RAB Only)
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [rabPublicAccess, setRabPublicAccess] = useState<boolean>(true);
+  const [rabPublicAccess, setRabPublicAccess] = useState<boolean>(false);
   const [adminPin, setAdminPin] = useState<string>("10603301");
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
   const [loginPinInput, setLoginPinInput] = useState<string>("");
@@ -320,7 +320,7 @@ export default function HomePage() {
 
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get("rab") === "locked") {
+      if (urlParams.get("rab") === "locked" || urlParams.get("rab") === "hide") {
         setRabPublicAccess(false);
         try {
           localStorage.setItem("rab_public_access", "false");
@@ -337,6 +337,13 @@ export default function HomePage() {
       }
     }
   }, []);
+
+  // Redirect guest back to denah if Admin hides the RAB menu
+  useEffect(() => {
+    if (!isAdmin && !rabPublicAccess && activeTab === "rab") {
+      setActiveTab("denah");
+    }
+  }, [isAdmin, rabPublicAccess, activeTab]);
 
   // Measure viewport width so 2D SVG zoom has exact pixel dimensions on both HP and Desktop
   useEffect(() => {
@@ -376,8 +383,8 @@ export default function HomePage() {
           setRabPublicAccess(data.rabPublicAccess);
           localStorage.setItem("rab_public_access", String(data.rabPublicAccess));
         } else {
-          setRabPublicAccess(true);
-          localStorage.setItem("rab_public_access", "true");
+          setRabPublicAccess(false);
+          localStorage.setItem("rab_public_access", "false");
         }
         if (typeof data?.adminPin === "string" && data.adminPin && data.adminPin !== "1987") {
           setAdminPin(data.adminPin);
@@ -395,8 +402,11 @@ export default function HomePage() {
           const savedPin = localStorage.getItem("rab_admin_pin");
           if (savedItems) setRabItems(JSON.parse(savedItems));
           if (savedDiscount !== null) setRabDiscount(parseInt(savedDiscount, 10) || 0);
-          // Do NOT lock public access from stale localStorage cache
-          setRabPublicAccess(true);
+          if (savedAccess === "true") {
+            setRabPublicAccess(true);
+          } else {
+            setRabPublicAccess(false);
+          }
           if (savedPin && savedPin !== "1987") {
             setAdminPin(savedPin);
           } else {
@@ -568,8 +578,8 @@ export default function HomePage() {
     triggerGitSync(rabItems, rabDiscount, false, newAccess, adminPin);
     showToast(
       newAccess
-        ? "🔓 Izin Publik Diberikan: Pengunjung sekarang BISA LANGSUNG MELIHAT RAB tanpa kode (Mode Read-Only)."
-        : "🔒 Izin Publik Dicabut: Menu RAB sekarang KOSONG & TERKUNCI untuk pengunjung."
+        ? "👁️ Menu RAB DITAMPILKAN: Pengunjung sekarang BISA melihat menu RAB (Read-Only tanpa PIN)."
+        : "🙈 Menu RAB DISEMBUNYIKAN: Menu RAB sekarang HIDE / HILANG dari pengunjung umum."
     );
   };
 
@@ -993,13 +1003,18 @@ export default function HomePage() {
   const svgPxHeight = Math.round(svgPxWidth * (1020 / 440));
 
   const handleSelectMainTab = (tab: "denah" | "render" | "rab") => {
+    if (tab === "rab" && !isAdmin && !rabPublicAccess) {
+      showToast("🔒 Menu RAB sedang disembunyikan oleh Admin.");
+      setActiveTab("denah");
+      return;
+    }
     setActiveTab(tab);
     if (tab === "denah") {
-      showToast("📐 Menu 1 Aktif: Denah 2D Skematik & Meteran");
+      showToast("📐 Menu 1: Denah 2D Skematik & Meteran");
     } else if (tab === "render") {
-      showToast("🎬 Menu 2 Aktif: Studio Visual 3D & Simulator CAD");
+      showToast("🎬 Menu 2: Studio Visual 3D & Simulator CAD");
     } else {
-      showToast("💰 Menu 3 Aktif: Rencana Anggaran Biaya (RAB)");
+      showToast("💰 Menu 3: Rencana Anggaran Biaya (RAB)");
     }
   };
 
@@ -1111,14 +1126,21 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* 3 MAIN NAVIGATION MENUS POSITIONED DIRECTLY BELOW DESCRIPTION */}
+          {/* MAIN NAVIGATION MENUS (RAB DIMUNCULKAN HANYA JIKA DIIZINKAN ADMIN) */}
           <div className="mt-4 pt-4 border-t border-slate-800/90">
-            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2.5 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>Pilih Menu Utama (Ketuk Salah Satu Menu di Bawah Ini):</span>
+            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>Pilih Menu Utama (Ketuk Menu di Bawah):</span>
+              </div>
+              {isAdmin && !rabPublicAccess && (
+                <span className="text-[10px] text-amber-300 font-mono bg-amber-950/80 px-2 py-0.5 rounded border border-amber-600/40">
+                  ⚠️ Status: Menu RAB disembunyikan dari user
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className={`grid grid-cols-1 ${isAdmin || rabPublicAccess ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2.5`}>
               <button
                 type="button"
                 onClick={() => handleSelectMainTab("denah")}
@@ -1167,34 +1189,36 @@ export default function HomePage() {
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelectMainTab("rab")}
-                className={`touch-manipulation w-full px-4 py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-between gap-2 cursor-pointer border-2 ${
-                  activeTab === "rab"
-                    ? "bg-amber-600 text-white shadow-lg shadow-amber-950/70 border-amber-300"
-                    : "bg-slate-900/95 hover:bg-slate-800 active:bg-slate-800 text-slate-200 border-slate-700/80"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Wallet className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-amber-200" />
-                  <span className="truncate text-left">
-                    3. Rencana Anggaran Biaya (RAB) {!isAdmin && !rabPublicAccess ? "🔒" : ""}
-                  </span>
-                </div>
-                <span
-                  className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
+              {(isAdmin || rabPublicAccess) && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectMainTab("rab")}
+                  className={`touch-manipulation w-full px-4 py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold transition flex items-center justify-between gap-2 cursor-pointer border-2 ${
                     activeTab === "rab"
-                      ? "bg-white/20 text-white"
-                      : "bg-slate-800 text-slate-400"
+                      ? "bg-amber-600 text-white shadow-lg shadow-amber-950/70 border-amber-300"
+                      : "bg-slate-900/95 hover:bg-slate-800 active:bg-slate-800 text-slate-200 border-slate-700/80"
                   }`}
                 >
-                  {activeTab === "rab" ? "AKTIF" : !isAdmin && !rabPublicAccess ? "KUNCI" : "BUKA"}
-                </span>
-              </button>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Wallet className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-amber-200" />
+                    <span className="truncate text-left">
+                      3. Rencana Anggaran Biaya (RAB)
+                    </span>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
+                      activeTab === "rab"
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-800 text-slate-400"
+                    }`}
+                  >
+                    {activeTab === "rab" ? "AKTIF" : isAdmin && !rabPublicAccess ? "ADMIN" : "BUKA"}
+                  </span>
+                </button>
+              )}
             </div>
 
-            {/* QUICK DIRECT SHORTCUTS FOR VIDEO & ADD BUDGET */}
+            {/* QUICK DIRECT SHORTCUTS FOR VIDEO & ADD BUDGET / METERAN */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-800/80">
               <button
                 type="button"
@@ -1210,28 +1234,44 @@ export default function HomePage() {
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={scrollToAddRabSection}
-                className="touch-manipulation w-full py-2.5 px-3.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 active:bg-amber-900 border border-amber-500/40 text-amber-200 text-xs font-bold transition flex items-center justify-between gap-2 cursor-pointer shadow-sm"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {isAdmin ? (
-                    <>
-                      <Plus className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="truncate">➕ Tambah Item Anggaran (Hitung Otomatis)</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="truncate">📋 Rincian Rencana Anggaran Biaya (RAB)</span>
-                    </>
-                  )}
-                </div>
-                <span className="text-[10px] font-mono text-amber-300 bg-amber-900/80 px-2 py-0.5 rounded shrink-0">
-                  {isAdmin ? "Mode Admin" : "Hanya Lihat"}
-                </span>
-              </button>
+              {isAdmin || rabPublicAccess ? (
+                <button
+                  type="button"
+                  onClick={scrollToAddRabSection}
+                  className="touch-manipulation w-full py-2.5 px-3.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/60 active:bg-amber-900 border border-amber-500/40 text-amber-200 text-xs font-bold transition flex items-center justify-between gap-2 cursor-pointer shadow-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isAdmin ? (
+                      <>
+                        <Plus className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="truncate">➕ Tambah Item Anggaran (Hitung Otomatis)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="truncate">📋 Rincian Rencana Anggaran Biaya (RAB)</span>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-mono text-amber-300 bg-amber-900/80 px-2 py-0.5 rounded shrink-0">
+                    {isAdmin ? "Mode Admin" : "Lihat Saja"}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={scrollToMeteranSection}
+                  className="touch-manipulation w-full py-2.5 px-3.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 active:bg-emerald-900 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition flex items-center justify-between gap-2 cursor-pointer shadow-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Ruler className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span className="truncate">📐 Panduan Tarikan Roll Meteran (96,15 M)</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-300 bg-emerald-900/80 px-2 py-0.5 rounded shrink-0">
+                    Presisi
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -2430,95 +2470,63 @@ export default function HomePage() {
         )}
 
         {/* ===================================================================== */}
-        {/* TAB 3: RENCANA ANGGARAN BIAYA (RAB) DENGAN SISTEM OTORISASI ADMIN     */}
+        {/* TAB 3: RENCANA ANGGARAN BIAYA (RAB)                                   */}
         {/* ===================================================================== */}
-        {activeTab === "rab" && (
+        {activeTab === "rab" && (isAdmin || rabPublicAccess) && (
           <div className="space-y-4 sm:space-y-6">
-            {/* KONDISI 1: JIKA AKSES PUBLIK DIKUNCI TOTAL OLEH ADMIN & USER BELUM LOGIN */}
-            {!isAdmin && !rabPublicAccess ? (
-              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-rose-950/40 border-2 border-rose-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl text-center max-w-2xl mx-auto space-y-4 my-6">
-                <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 mx-auto flex items-center justify-center shadow-lg">
-                  <Lock className="w-8 h-8" />
-                </div>
-                <div className="space-y-2">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold uppercase tracking-wider border border-rose-500/40">
-                    <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>RAB Ditutup / Dikunci oleh Admin</span>
+            {/* STATUS BAR: ADMIN FULL ACCESS VS GUEST READ-ONLY */}
+            {isAdmin ? (
+              <div className="bg-gradient-to-r from-emerald-950/90 via-slate-900 to-amber-950/70 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-5 h-5 text-emerald-400" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white">
-                    Rencana Anggaran Biaya (RAB) Sedang Dikunci
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
-                    Admin Panitia saat ini sedang menutup/mengunci rincian anggaran untuk pengunjung umum demi menjaga privasi dan validitas dokumen.
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-black text-white">
+                        👑 MODE ADMIN AKTIF (AKSES PENUH)
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                          rabPublicAccess
+                            ? "bg-emerald-500 text-slate-950"
+                            : "bg-amber-500 text-slate-950"
+                        }`}
+                      >
+                        {rabPublicAccess ? "Menu Tampil ke Tamu" : "Menu Tersembunyi"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
+                      {rabPublicAccess
+                        ? "Menu RAB saat ini DITAMPILKAN ke pengunjung umum (Mode Read-Only tanpa edit)."
+                        : "Menu RAB saat ini DISEMBUNYIKAN dari pengunjung umum (Hanya Admin yang dapat melihat ini)."}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="pt-3 text-xs text-slate-400">
-                  <span>Anda Panitia Pelaksana? </span>
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                   <button
                     type="button"
-                    onClick={() => {
-                      setLoginError(null);
-                      setShowLoginModal(true);
-                    }}
-                    className="text-amber-400 font-bold hover:underline cursor-pointer inline-flex items-center gap-1 ml-1"
+                    onClick={() => handleTogglePublicAccess(!rabPublicAccess)}
+                    className={`touch-manipulation px-4 py-2.5 rounded-xl text-xs font-black border transition flex items-center gap-2 cursor-pointer shadow-xl ${
+                      rabPublicAccess
+                        ? "bg-rose-600 hover:bg-rose-500 text-white border-rose-300"
+                        : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-300"
+                    }`}
+                    title="Klik untuk mengubah status: tampilkan atau sembunyikan menu RAB ke pengunjung"
                   >
-                    <KeyRound className="w-3.5 h-3.5" />
-                    <span>Masuk Mode Admin</span>
+                    {rabPublicAccess ? (
+                      <>
+                        <EyeOff className="w-4 h-4 text-white" />
+                        <span>🙈 HIDE / SEMBUNYIKAN MENU RAB DARI USER</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4 text-white" />
+                        <span>👁️ TAMPILKAN MENU RAB KE USER (READ-ONLY)</span>
+                      </>
+                    )}
                   </button>
-                </div>
-
-                <p className="text-[11px] text-slate-500 pt-3 border-t border-slate-800/80">
-                  ℹ️ Catatan: Menu Denah 2D, Video Drone Udara, dan Studio CAD 3D tetap terbuka bebas untuk umum.
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* STATUS BAR: ADMIN FULL ACCESS VS GUEST READ-ONLY */}
-                {isAdmin ? (
-                  <div className="bg-gradient-to-r from-emerald-950/90 via-slate-900 to-amber-950/70 border-2 border-emerald-500/50 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 flex items-center justify-center shrink-0">
-                        <UserCheck className="w-5 h-5 text-emerald-400" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs sm:text-sm font-black text-white">
-                            👑 MODE ADMIN AKTIF (AKSES PENUH)
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500 text-slate-950">
-                            Terotentikasi
-                          </span>
-                        </div>
-                        <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
-                          Anda memiliki izin penuh untuk <strong>mengedit harga/jumlah</strong>, <strong>menambah item anggaran</strong>, serta mengatur visibilitas publik.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                      <button
-                        type="button"
-                        onClick={() => handleTogglePublicAccess(!rabPublicAccess)}
-                        className={`touch-manipulation px-4 py-2 rounded-xl text-xs font-black border transition flex items-center gap-1.5 cursor-pointer shadow-lg ${
-                          rabPublicAccess
-                            ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-300"
-                            : "bg-rose-600 hover:bg-rose-500 text-white border-rose-300"
-                        }`}
-                        title="Klik untuk mengubah status: jika hijau, user lain bisa melihat (Read-Only). Jika merah, user lain terkunci."
-                      >
-                        {rabPublicAccess ? (
-                          <>
-                            <Eye className="w-4 h-4 text-white" />
-                            <span>🟢 Izin Publik: Boleh Lihat (Read-Only)</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="w-4 h-4 text-white" />
-                            <span>🔴 Izin Publik: Kunci (User Terkunci)</span>
-                          </>
-                        )}
-                      </button>
 
                       <button
                         type="button"
@@ -3440,8 +3448,6 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-              </>
-            )}
           </div>
         )}
       </div>

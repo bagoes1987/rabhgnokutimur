@@ -100,7 +100,7 @@
     }
   ],
   "rabDiscount": 0,
-  "rabPublicAccess": true,
+  "rabPublicAccess": false,
   "adminPin": "10603301",
-  "updatedAt": "2026-10-24T06:55:00.000Z"
+  "updatedAt": "2026-10-24T07:29:00.000Z"
 }
