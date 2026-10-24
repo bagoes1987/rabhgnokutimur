@@ -413,7 +413,10 @@ export default function HomePage() {
   useEffect(() => {
     let isSubscribed = true;
     const fetchAccess = () => {
-      fetch("/api/rab-access")
+      fetch(`/api/rab-access?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      })
         .then((res) => res.json())
         .then((data) => {
           if (!isSubscribed) return;
@@ -444,7 +447,7 @@ export default function HomePage() {
     };
 
     fetchAccess();
-    const interval = setInterval(fetchAccess, 3000);
+    const interval = setInterval(fetchAccess, 2000);
     window.addEventListener("focus", fetchAccess);
     return () => {
       isSubscribed = false;
@@ -546,24 +549,21 @@ export default function HomePage() {
     showToast("🔒 Mode Admin Non-Aktif. RAB kembali ke Mode Tamu (Hanya Lihat / Terkunci).");
   };
 
-  const handleTogglePublicAccess = (newAccess: boolean) => {
+  const handleTogglePublicAccess = async (newAccess: boolean) => {
     if (!isAdmin) return;
     setRabPublicAccess(newAccess);
     try {
       localStorage.setItem("rab_public_access", String(newAccess));
     } catch {}
 
-    // 🌐 Real-Time Cloud Sync: both via internal API and cloud KV
-    fetch("/api/rab-access", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rabPublicAccess: newAccess }),
-    }).catch(() => {});
-
-    fetch(
-      `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/c84fpy47/rab_public_access/${newAccess}`,
-      { method: "POST" }
-    ).catch(() => {});
+    // 🌐 Real-Time Cloud Sync: await internal server API and update KV
+    try {
+      await fetch("/api/rab-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rabPublicAccess: newAccess }),
+      });
+    } catch {}
 
     triggerGitSync(rabItems, rabDiscount, false, newAccess, adminPin);
     showToast(
