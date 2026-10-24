@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className="dark scroll-smooth">
-      <body className="min-h-screen bg-[#030712] text-slate-100 antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+      <body className="min-h-screen bg-[#030712] text-slate-100 antialiased selection:bg-emerald-500/30 selection:text-emerald-200 overflow-x-hidden">
         {children}
       </body>
     </html>

@@ -1114,7 +1114,7 @@ export default function HomePage() {
       </div>
 
       {/* ================= MAIN WEB CONTAINER ================= */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-3.5 sm:py-6 space-y-4 sm:space-y-6 no-print">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 md:px-8 py-3.5 sm:py-6 space-y-4 sm:space-y-6 no-print overflow-x-hidden">
         {/* HERO BANNER WITH DIRECT TOP MENU RIGHT UNDER THE TITLE & DESCRIPTION */}
         <header className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-[#091326] to-emerald-950/40 border border-slate-800/90 p-4 sm:p-6 md:p-7 shadow-2xl">
           <div className="space-y-2 max-w-4xl">
@@ -2343,7 +2343,94 @@ export default function HomePage() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70 mt-5">
+              {/* TAMPILAN KHUSUS HP (MOBILE): KARTU RINCIAN METERAN (LANGSUNG TERBACA TANPA GESER LAYAR) */}
+              <div className="md:hidden space-y-3 mt-4">
+                {METERAN_SEGMENTS.map((seg) => {
+                  const badgeColor =
+                    seg.type === "stage"
+                      ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                      : seg.type === "vvip"
+                      ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                      : seg.type === "chairs"
+                      ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                      : seg.type === "k3"
+                      ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                      : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+
+                  const typeLabel =
+                    seg.type === "stage"
+                      ? "Panggung"
+                      : seg.type === "vvip"
+                      ? "Zona VVIP"
+                      : seg.type === "chairs"
+                      ? "Blok Kursi"
+                      : seg.type === "k3"
+                      ? "Jalur Darurat K3"
+                      : "Gerbang / Gate";
+
+                  return (
+                    <div
+                      key={seg.no}
+                      className="bg-slate-950/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 shadow-md"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-500/30">
+                            {seg.no}
+                          </span>
+                          <h4 className="text-xs font-black text-white leading-tight">
+                            {seg.zone}
+                          </h4>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[9px] font-black uppercase shrink-0 border ${badgeColor}`}
+                        >
+                          {typeLabel}
+                        </span>
+                      </div>
+
+                      {/* Baris Metrik: Panjang & Tarikan Roll Meteran (Presisi 50-50) */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                            Panjang Zona
+                          </span>
+                          <span className="text-xs font-black font-mono text-emerald-400 block mt-0.5">
+                            {seg.length}
+                          </span>
+                        </div>
+                        <div className="bg-amber-950/30 rounded-xl p-2.5 border border-amber-500/30">
+                          <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider block">
+                            Tarikan Meteran
+                          </span>
+                          <span className="text-xs font-black font-mono text-amber-300 block mt-0.5">
+                            {seg.accum}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Deskripsi & Standar K3 */}
+                      <p className="text-[11px] text-slate-300 leading-relaxed bg-slate-900/60 rounded-xl p-2.5 border border-slate-800/80">
+                        {seg.desc}
+                      </p>
+                    </div>
+                  );
+                })}
+
+                {/* Ringkasan Akumulasi Total di HP */}
+                <div className="bg-gradient-to-br from-emerald-950 to-slate-950 border-2 border-emerald-500/50 rounded-2xl p-4 space-y-2 shadow-xl">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-200 font-bold">Total Panjang Lapangan:</span>
+                    <span className="font-mono text-sm font-black text-emerald-400">96,15 M (≈ 96 M)</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-800 text-[11px] text-emerald-300 font-semibold leading-relaxed">
+                    ✓ Kapasitas 3.026 Kursi Napolly Terakomodir 100% Nyaman & Aman Sesuai K3
+                  </div>
+                </div>
+              </div>
+
+              {/* TAMPILAN DESKTOP & TABLET: TABEL FORMAT SPREADSHEET */}
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70 mt-5">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-950 text-slate-300 uppercase tracking-wider text-[11px] border-b border-slate-800">
@@ -2963,12 +3050,56 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* MOBILE-FRIENDLY CARD VIEW (Tampil Otomatis di Layar HP) */}
-                <div className="md:hidden space-y-3">
+                {/* MOBILE-FRIENDLY CARD VIEW (Tampil Otomatis di Layar HP - 100% Rapi & Langsung Terbaca) */}
+                <div className="md:hidden space-y-2.5">
                   {rabItems.map((item, index) => {
                     const subtotal = (item.qty || 0) * (item.price || 0);
                     const isAdditional = !DEFAULT_RAB_IDS.has(item.id);
 
+                    if (!isAdmin) {
+                      // TAMPILAN GUEST / PUBLIK (HANYA LIHAT): ULTRA RAPI & LANGSUNG TERBACA TANPA GESER LAYAR
+                      return (
+                        <div
+                          key={item.id}
+                          className={`bg-slate-950/90 border rounded-2xl p-3 shadow-sm space-y-1.5 ${
+                            isAdditional
+                              ? "border-amber-500/50 bg-amber-950/15"
+                              : "border-slate-800/90"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-500/30">
+                                {index + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <h4 className="text-xs font-black text-white leading-tight">
+                                  {item.name}
+                                </h4>
+                                <div className="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-1.5 font-mono">
+                                  <span className="text-cyan-300 font-semibold">{item.qty} {item.unit}</span>
+                                  <span>×</span>
+                                  <span className="text-slate-300">{formatRupiah(item.price)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <span className="text-xs sm:text-sm font-black text-amber-400 font-mono block">
+                                {formatRupiah(subtotal)}
+                              </span>
+                              {isAdditional && (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mt-0.5">
+                                  Tambahan
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // TAMPILAN ADMIN (FORM EDIT INTERAKTIF DI HP)
                     return (
                       <div
                         key={item.id}
@@ -2987,39 +3118,27 @@ export default function HomePage() {
                               </span>
                             )}
                           </div>
-                          {isAdmin ? (
-                            <button
-                              onClick={() => deleteRabItem(item.id)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 transition cursor-pointer"
-                              title="Hapus item (Admin)"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            <span className="p-1 text-slate-600" title="Terkunci (Hanya Lihat)">
-                              <Lock className="w-3.5 h-3.5" />
-                            </span>
-                          )}
+                          <button
+                            onClick={() => deleteRabItem(item.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/50 transition cursor-pointer"
+                            title="Hapus item (Admin)"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
 
                         <div>
                           <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
                             Nama Item
                           </label>
-                          {isAdmin ? (
-                            <input
-                              type="text"
-                              value={item.name}
-                              onChange={(e) =>
-                                updateItemField(item.id, "name", e.target.value)
-                              }
-                              className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none"
-                            />
-                          ) : (
-                            <div className="w-full bg-slate-950/60 border border-slate-800/80 text-white font-bold text-xs rounded-xl px-3 py-2 select-all">
-                              {item.name}
-                            </div>
-                          )}
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) =>
+                              updateItemField(item.id, "name", e.target.value)
+                            }
+                            className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-white font-bold text-xs rounded-xl px-3 py-2 outline-none"
+                          />
                         </div>
 
                         <div className="grid grid-cols-12 gap-2">
@@ -3027,76 +3146,58 @@ export default function HomePage() {
                             <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
                               Harga (Rp)
                             </label>
-                            {isAdmin ? (
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={
-                                  item.price > 0
-                                    ? item.price.toLocaleString("id-ID")
-                                    : ""
-                                }
-                                placeholder="0"
-                                onChange={(e) => {
-                                  const raw = e.target.value.replace(/[^0-9]/g, "");
-                                  updateItemField(
-                                    item.id,
-                                    "price",
-                                    raw ? parseInt(raw, 10) : 0
-                                  );
-                                }}
-                                className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl px-2.5 py-2 text-right outline-none"
-                              />
-                            ) : (
-                              <div className="w-full bg-slate-950/60 border border-slate-800/80 text-amber-300 font-bold text-xs rounded-xl px-2.5 py-2 text-right">
-                                {formatRupiah(item.price)}
-                              </div>
-                            )}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={
+                                item.price > 0
+                                  ? item.price.toLocaleString("id-ID")
+                                  : ""
+                              }
+                              placeholder="0"
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^0-9]/g, "");
+                                updateItemField(
+                                  item.id,
+                                  "price",
+                                  raw ? parseInt(raw, 10) : 0
+                                );
+                              }}
+                              className="w-full bg-slate-950 border border-slate-700/80 focus:border-amber-400 text-amber-300 font-bold text-xs rounded-xl px-2.5 py-2 text-right outline-none"
+                            />
                           </div>
 
                           <div className="col-span-3">
                             <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
                               Jumlah
                             </label>
-                            {isAdmin ? (
-                              <input
-                                type="number"
-                                min="0"
-                                value={item.qty}
-                                onChange={(e) =>
-                                  updateItemField(
-                                    item.id,
-                                    "qty",
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                className="w-full bg-slate-950 border border-slate-700/80 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
-                              />
-                            ) : (
-                              <div className="w-full bg-slate-950/60 border border-slate-800/80 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center">
-                                {item.qty}
-                              </div>
-                            )}
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.qty}
+                              onChange={(e) =>
+                                updateItemField(
+                                  item.id,
+                                  "qty",
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
+                              className="w-full bg-slate-950 border border-slate-700/80 focus:border-cyan-400 text-cyan-300 font-bold text-xs rounded-xl px-2 py-2 text-center outline-none"
+                            />
                           </div>
 
                           <div className="col-span-3">
                             <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1 text-center">
                               Satuan
                             </label>
-                            {isAdmin ? (
-                              <input
-                                type="text"
-                                value={item.unit}
-                                onChange={(e) =>
-                                  updateItemField(item.id, "unit", e.target.value)
-                                }
-                                className="w-full bg-slate-950 border border-slate-700/80 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
-                              />
-                            ) : (
-                              <div className="w-full bg-slate-950/60 border border-slate-800/80 text-slate-300 text-xs rounded-xl px-2 py-2 text-center">
-                                {item.unit}
-                              </div>
-                            )}
+                            <input
+                              type="text"
+                              value={item.unit}
+                              onChange={(e) =>
+                                updateItemField(item.id, "unit", e.target.value)
+                              }
+                              className="w-full bg-slate-950 border border-slate-700/80 focus:border-indigo-400 text-slate-300 text-xs rounded-xl px-2 py-2 text-center outline-none"
+                            />
                           </div>
                         </div>
 
@@ -3104,29 +3205,23 @@ export default function HomePage() {
                           <span className="text-xs font-bold text-slate-400">
                             Total Item:
                           </span>
-                          {isAdmin ? (
-                            <div className="relative flex items-center w-44">
-                              <span className="absolute left-3 text-emerald-400 font-bold text-xs pointer-events-none">
-                                Rp
-                              </span>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={
-                                  subtotal > 0 ? subtotal.toLocaleString("id-ID") : ""
-                                }
-                                placeholder="0"
-                                onChange={(e) =>
-                                  handleSubtotalDirectChange(item.id, e.target.value)
-                                }
-                                className="w-full bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-black text-xs rounded-xl pl-8 pr-2.5 py-1.5 text-right outline-none"
-                              />
-                            </div>
-                          ) : (
-                            <div className="text-emerald-300 font-black text-xs bg-slate-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/20">
-                              {formatRupiah(subtotal)}
-                            </div>
-                          )}
+                          <div className="relative flex items-center flex-1 max-w-[170px]">
+                            <span className="absolute left-2.5 text-emerald-400 font-bold text-xs pointer-events-none">
+                              Rp
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={
+                                subtotal > 0 ? subtotal.toLocaleString("id-ID") : ""
+                              }
+                              placeholder="0"
+                              onChange={(e) =>
+                                handleSubtotalDirectChange(item.id, e.target.value)
+                              }
+                              className="w-full bg-slate-950 border border-emerald-500/40 focus:border-emerald-400 text-emerald-300 font-black text-xs rounded-xl pl-8 pr-2.5 py-1.5 text-right outline-none"
+                            />
+                          </div>
                         </div>
                       </div>
                     );
@@ -3183,7 +3278,7 @@ export default function HomePage() {
                       <span>TOTAL ANGGARAN (OTOMATIS):</span>
                       <span className="text-lg">{formatRupiah(grandTotal)}</span>
                     </div>
-                    <div className="text-[10px] text-slate-400 italic text-right truncate">
+                    <div className="text-[11px] text-slate-300 italic text-right leading-relaxed bg-slate-900/60 rounded-xl p-2 border border-slate-800/80 mt-1">
                       &ldquo;{terbilangText}&rdquo;
                     </div>
                   </div>
