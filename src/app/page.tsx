@@ -166,6 +166,13 @@ const METERAN_SEGMENTS = [
 ];
 
 const STUDIO_RENDERS = {
+  denah3d: {
+    img: "/denah-3d.png",
+    title: "Denah Gambar 3D (Arsitektur Layout & Zonasi Lengkap Lapangan SMAN 1 Belitang)",
+    desc: "Visual denah 3D isometrik terperinci mencakup seluruh penataan panggung utama, tenda kehormatan VIP, karpet merah sentral, formasi kursi 3.000 peserta guru, jalur prosesi, gerbang Tanjak, dan pos pengamanan.",
+    badge: "Denah Gambar 3D",
+    cadAngle: "aerial",
+  },
   front: {
     img: "/stage_3d_front.jpg",
     title: "Tampak Depan Panggung Utama (Atap Tenda Lengkung & VVIP Baris Depan)",
@@ -267,7 +274,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"denah" | "render" | "rab">("denah");
   const [rabItems, setRabItems] = useState<RabItem[]>(DEFAULT_RAB_LIST);
   const [rabDiscount, setRabDiscount] = useState<number>(0);
-  const [studioKey, setStudioKey] = useState<"front" | "side" | "rear" | "full">("front");
+  const [studioKey, setStudioKey] = useState<"denah3d" | "front" | "side" | "rear" | "full">("denah3d");
   const [external3DAngle, setExternal3DAngle] = useState<string | null>(null);
   const [mapZoom, setMapZoom] = useState<number>(1.0);
   const [baseMapWidth, setBaseMapWidth] = useState<number>(360);
@@ -2411,7 +2418,7 @@ export default function HomePage() {
                 <div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/15 text-cyan-300 text-[10px] sm:text-xs font-bold border border-cyan-500/30 mb-1.5">
                     <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                    <span>Architectural Render Gallery • 4 Sudut Pandang</span>
+                    <span>Architectural Render Gallery • Denah Gambar 3D & Sudut Pandang</span>
                   </span>
                   <h2 className="text-base sm:text-xl font-black text-white leading-snug">
                     {currentRender.title}
@@ -2424,6 +2431,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full md:w-auto">
                   {(
                     [
+                      ["denah3d", "📐 Denah Gambar 3D"],
                       ["front", "1. Tampak Depan"],
                       ["side", "2. Tampak Samping"],
                       ["rear", "3. Tribun Belakang"],
@@ -2438,7 +2446,7 @@ export default function HomePage() {
                       }}
                       className={`px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition cursor-pointer border text-center ${
                         studioKey === key
-                          ? "bg-cyan-600 text-white border-cyan-400 shadow-lg"
+                          ? "bg-cyan-600 text-white border-cyan-400 shadow-lg shadow-cyan-950/60"
                           : "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
                       }`}
                     >
@@ -2448,15 +2456,33 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="relative rounded-xl sm:rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 h-[220px] sm:h-[360px] md:h-[460px]">
+              <div
+                className={`relative rounded-xl sm:rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center transition-all ${
+                  studioKey === "denah3d"
+                    ? "h-[450px] sm:h-[650px] md:h-[800px]"
+                    : "h-[220px] sm:h-[360px] md:h-[460px]"
+                }`}
+              >
                 <img
                   src={currentRender.img}
                   alt={currentRender.title}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full ${
+                    studioKey === "denah3d" ? "object-contain" : "object-cover"
+                  }`}
                 />
-                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-slate-950/85 backdrop-blur px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl border border-cyan-500/40 text-[10px] sm:text-xs font-bold text-cyan-300">
+                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-slate-950/85 backdrop-blur px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl border border-cyan-500/40 text-[10px] sm:text-xs font-bold text-cyan-300 shadow-md">
                   {currentRender.badge}
                 </div>
+                <a
+                  href={currentRender.img}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={studioKey === "denah3d" ? "DENAH_3D_HUT_PGRI.png" : undefined}
+                  className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-slate-900/90 hover:bg-cyan-600 active:bg-cyan-700 border border-cyan-500/40 text-white px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold shadow-lg flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>Buka Resolusi Asli / Unduh HD</span>
+                </a>
               </div>
             </div>
 
