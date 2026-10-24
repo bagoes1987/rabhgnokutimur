@@ -38,6 +38,8 @@ import {
   LogOut,
   Settings,
   Share2,
+  X,
+  Minimize2,
 } from "lucide-react";
 import PrintProposalBooklet, { RabItem } from "@/components/PrintProposalBooklet";
 import type { CadSimulator3DRef } from "@/components/CadSimulator3D";
@@ -276,6 +278,11 @@ export default function HomePage() {
   const [rabDiscount, setRabDiscount] = useState<number>(0);
   const [studioKey, setStudioKey] = useState<"denah3d" | "front" | "side" | "rear" | "full">("denah3d");
   const [external3DAngle, setExternal3DAngle] = useState<string | null>(null);
+  const [renderZoom, setRenderZoom] = useState<number>(1.0);
+  const [showRenderModal, setShowRenderModal] = useState<boolean>(false);
+  const [modalZoom, setModalZoom] = useState<number>(1.5);
+  const pinchStartDistRef = useRef<number | null>(null);
+  const pinchStartZoomRef = useRef<number>(1.0);
   const [mapZoom, setMapZoom] = useState<number>(1.0);
   const [baseMapWidth, setBaseMapWidth] = useState<number>(360);
   const [isPanning, setIsPanning] = useState<boolean>(false);
@@ -2530,6 +2537,7 @@ export default function HomePage() {
                       onClick={() => {
                         setStudioKey(key);
                         setExternal3DAngle(STUDIO_RENDERS[key].cadAngle);
+                        setRenderZoom(1.0);
                       }}
                       className={`px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition cursor-pointer border text-center ${
                         studioKey === key
@@ -2543,34 +2551,166 @@ export default function HomePage() {
                 </div>
               </div>
 
+              {/* FITUR ZOOM IN / ZOOM OUT KHUSUS HP & DESKTOP (DETAIL TANPA HARUS DOWNLOAD) */}
+              <div className="bg-slate-950/90 border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2 shadow-inner">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRenderZoom((z) => Math.max(1.0, +(z - 0.5).toFixed(2)))}
+                    disabled={renderZoom <= 1.0}
+                    className="touch-manipulation px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-700 text-slate-200 disabled:opacity-35 text-xs font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer shadow-sm"
+                    title="Perkecil Gambar (Zoom Out)"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5 text-amber-400" />
+                    <span>− Zoom Out</span>
+                  </button>
+
+                  <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1 text-xs font-mono font-black text-cyan-300 min-w-[58px] justify-center shadow-inner">
+                    {Math.round(renderZoom * 100)}%
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setRenderZoom((z) => Math.min(4.0, +(z + 0.5).toFixed(2)))}
+                    disabled={renderZoom >= 4.0}
+                    className="touch-manipulation px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-500 text-white disabled:opacity-35 text-xs font-bold transition flex items-center gap-1 border border-cyan-400 shadow-md cursor-pointer"
+                    title="Perbesar Gambar (Zoom In)"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                    <span>+ Zoom In</span>
+                  </button>
+
+                  {renderZoom > 1.0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRenderZoom(1.0)}
+                      className="touch-manipulation p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition cursor-pointer"
+                      title="Kembalikan Zoom ke 100%"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <div className="hidden sm:flex items-center gap-1">
+                    {[1.0, 1.5, 2.0, 3.0, 4.0].map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setRenderZoom(level)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold font-mono transition border cursor-pointer ${
+                          Math.abs(renderZoom - level) < 0.1
+                            ? "bg-cyan-500 text-slate-950 border-cyan-300 font-black"
+                            : "bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200"
+                        }`}
+                      >
+                        {Math.round(level * 100)}%
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalZoom(Math.max(1.5, renderZoom));
+                      setShowRenderModal(true);
+                    }}
+                    className="touch-manipulation px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 hover:from-cyan-500 hover:to-teal-400 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md border border-cyan-400/40 cursor-pointer"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Layar Penuh (Zoom HD)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* VIEWPORT GAMBAR BERFITUR TOUCH ZOOM & PAN NATIVE MOMENTUM DI HP */}
               <div
-                className={`relative rounded-xl sm:rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center transition-all ${
+                onTouchStart={(e) => {
+                  if (e.touches.length === 2) {
+                    const dist = Math.hypot(
+                      e.touches[0].clientX - e.touches[1].clientX,
+                      e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    pinchStartDistRef.current = dist;
+                    pinchStartZoomRef.current = renderZoom;
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (e.touches.length === 2 && pinchStartDistRef.current !== null) {
+                    const dist = Math.hypot(
+                      e.touches[0].clientX - e.touches[1].clientX,
+                      e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const ratio = dist / pinchStartDistRef.current;
+                    const newZoom = Math.min(4.0, Math.max(1.0, +(pinchStartZoomRef.current * ratio).toFixed(2)));
+                    setRenderZoom(newZoom);
+                  }
+                }}
+                onTouchEnd={() => {
+                  pinchStartDistRef.current = null;
+                }}
+                style={{ WebkitOverflowScrolling: "touch" }}
+                className={`relative rounded-xl sm:rounded-2xl overflow-auto border border-slate-800 bg-slate-950 transition-all ${
                   studioKey === "denah3d"
-                    ? "h-[450px] sm:h-[650px] md:h-[800px]"
-                    : "h-[220px] sm:h-[360px] md:h-[460px]"
+                    ? "h-[460px] sm:h-[650px] md:h-[800px]"
+                    : "h-[240px] sm:h-[380px] md:h-[480px]"
                 }`}
               >
-                <img
-                  src={currentRender.img}
-                  alt={currentRender.title}
-                  className={`w-full h-full ${
-                    studioKey === "denah3d" ? "object-contain" : "object-cover"
-                  }`}
-                />
-                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-slate-950/85 backdrop-blur px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl border border-cyan-500/40 text-[10px] sm:text-xs font-bold text-cyan-300 shadow-md">
-                  {currentRender.badge}
-                </div>
-                <a
-                  href={currentRender.img}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download={studioKey === "denah3d" ? "DENAH_3D_HUT_PGRI.png" : undefined}
-                  className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-slate-900/90 hover:bg-cyan-600 active:bg-cyan-700 border border-cyan-500/40 text-white px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold shadow-lg flex items-center gap-1.5 transition cursor-pointer"
+                <div
+                  style={{
+                    width: `${Math.round(renderZoom * 100)}%`,
+                    minWidth: "100%",
+                    transition: pinchStartDistRef.current !== null ? "none" : "width 0.2s cubic-bezier(0.2, 0, 0, 1)",
+                  }}
+                  className="relative flex items-center justify-center mx-auto"
                 >
-                  <Download className="w-3.5 h-3.5 text-cyan-300" />
-                  <span>Buka Resolusi Asli / Unduh HD</span>
-                </a>
+                  <img
+                    src={currentRender.img}
+                    alt={currentRender.title}
+                    className="w-full h-auto object-contain select-none"
+                    draggable={false}
+                  />
+                </div>
+
+                {/* Floating Badges */}
+                <div className="sticky bottom-3 left-3 sm:bottom-4 sm:left-4 inline-flex items-center gap-1.5 bg-slate-950/85 backdrop-blur px-2.5 py-1 rounded-xl border border-cyan-500/40 text-[10px] sm:text-xs font-bold text-cyan-300 shadow-md pointer-events-none z-10">
+                  <span>{currentRender.badge}</span>
+                  {renderZoom > 1.0 && (
+                    <span className="text-amber-400 font-mono">({Math.round(renderZoom * 100)}%)</span>
+                  )}
+                </div>
+
+                {/* Floating Bottom Right Controls */}
+                <div className="sticky bottom-3 right-3 sm:bottom-4 sm:right-4 ml-auto float-right inline-flex items-center gap-1.5 z-10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalZoom(Math.max(1.5, renderZoom));
+                      setShowRenderModal(true);
+                    }}
+                    className="bg-slate-900/90 hover:bg-cyan-600 active:bg-cyan-700 border border-cyan-500/40 text-white px-2.5 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold shadow-lg flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Layar Penuh</span>
+                  </button>
+                  <a
+                    href={currentRender.img}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download={studioKey === "denah3d" ? "DENAH_3D_HUT_PGRI.png" : undefined}
+                    className="bg-slate-900/90 hover:bg-cyan-600 active:bg-cyan-700 border border-cyan-500/40 text-white p-1.5 rounded-xl text-[10px] sm:text-xs font-bold shadow-lg flex items-center gap-1 transition cursor-pointer"
+                    title="Unduh HD"
+                  >
+                    <Download className="w-3.5 h-3.5 text-cyan-300" />
+                  </a>
+                </div>
               </div>
+
+              {/* Helper tip for mobile */}
+              <p className="text-[11px] text-slate-400 leading-relaxed px-1">
+                💡 <strong>Panduan Zoom di HP:</strong> Tekan tombol <strong className="text-cyan-300">+ Zoom In</strong> atau lakukan gerakan cubit layar (<em>pinch zoom</em>) dengan 2 jari untuk memperbesar gambar hingga 400%, lalu usap/tarik layar dengan jari untuk melihat detail panggung, tenda, dan susunan kursi secara tajam tanpa perlu mendownload.
+              </p>
             </div>
 
             {/* Real-Time Three.js 3D CAD Simulator */}
@@ -3572,6 +3712,93 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* ================= MODAL FULLSCREEN 3D ZOOM INTERAKTIF HP ================= */}
+      {showRenderModal && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-md no-print">
+          {/* Top Control Bar */}
+          <div className="flex items-center justify-between p-3 sm:p-4 bg-slate-950/95 border-b border-slate-800 shrink-0">
+            <div className="flex items-center gap-2 min-w-0 pr-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-black text-white truncate">
+                  {currentRender.title}
+                </h3>
+                <span className="text-[10px] text-cyan-300 font-mono">
+                  Mode Zoom Detail Layar Penuh (HP)
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setModalZoom((z) => Math.max(1.0, +(z - 0.5).toFixed(2)))}
+                disabled={modalZoom <= 1.0}
+                className="w-8 h-8 rounded-xl bg-slate-800 active:bg-slate-700 disabled:opacity-40 text-amber-400 font-bold flex items-center justify-center border border-slate-700 cursor-pointer"
+                title="Perkecil"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+
+              <span className="px-2 py-1 bg-slate-900 rounded-lg text-xs font-mono font-black text-cyan-300 min-w-[50px] text-center border border-slate-800">
+                {Math.round(modalZoom * 100)}%
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setModalZoom((z) => Math.min(5.0, +(z + 0.5).toFixed(2)))}
+                disabled={modalZoom >= 5.0}
+                className="w-8 h-8 rounded-xl bg-cyan-600 active:bg-cyan-500 disabled:opacity-40 text-white font-bold flex items-center justify-center border border-cyan-400 shadow-md cursor-pointer"
+                title="Perbesar"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalZoom(1.0)}
+                className="w-8 h-8 rounded-xl bg-slate-800 active:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-700 cursor-pointer"
+                title="Reset Zoom"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowRenderModal(false)}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 active:bg-rose-700 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1 shadow-md cursor-pointer ml-1"
+                title="Tutup Layar Penuh"
+              >
+                <X className="w-4 h-4" />
+                <span>Tutup</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable Viewport with touch momentum */}
+          <div
+            style={{ WebkitOverflowScrolling: "touch" }}
+            className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-black"
+          >
+            <div
+              style={{
+                width: `${Math.round(modalZoom * 100)}%`,
+                minWidth: "100%",
+                transition: "width 0.2s cubic-bezier(0.2, 0, 0, 1)",
+              }}
+              className="relative mx-auto my-auto flex items-center justify-center"
+            >
+              <img
+                src={currentRender.img}
+                alt={currentRender.title}
+                className="w-full h-auto object-contain select-none"
+                draggable={false}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= MODAL LOGIN ADMIN PIN ================= */}
       {showLoginModal && (
