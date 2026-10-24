@@ -412,6 +412,40 @@ export default function HomePage() {
       });
   }, []);
 
+  // Real-time Cloud KV listener: syncs permission status across all visitor devices within seconds!
+  useEffect(() => {
+    let isSubscribed = true;
+    const fetchAccessFromCloud = () => {
+      fetch("https://keyvalue.immanuel.co/api/KeyVal/GetValue/c84fpy47/rab_public_access")
+        .then((res) => res.text())
+        .then((text) => {
+          if (!isSubscribed) return;
+          const clean = text.trim().toLowerCase().replace(/"/g, "");
+          if (clean === "true") {
+            setRabPublicAccess(true);
+            try {
+              localStorage.setItem("rab_public_access", "true");
+            } catch {}
+          } else if (clean === "false") {
+            setRabPublicAccess(false);
+            try {
+              localStorage.setItem("rab_public_access", "false");
+            } catch {}
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchAccessFromCloud();
+    const interval = setInterval(fetchAccessFromCloud, 4000);
+    window.addEventListener("focus", fetchAccessFromCloud);
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", fetchAccessFromCloud);
+    };
+  }, []);
+
   const triggerGitSync = async (
     items: RabItem[],
     discount: number,
@@ -511,6 +545,13 @@ export default function HomePage() {
     try {
       localStorage.setItem("rab_public_access", String(newAccess));
     } catch {}
+
+    // 🌐 Real-Time Cloud Sync across all visitor devices (phones & desktops)
+    fetch(
+      `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/c84fpy47/rab_public_access/${newAccess}`,
+      { method: "POST" }
+    ).catch(() => {});
+
     triggerGitSync(rabItems, rabDiscount, false, newAccess, adminPin);
     showToast(
       newAccess
@@ -2480,22 +2521,22 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => handleTogglePublicAccess(!rabPublicAccess)}
-                        className={`touch-manipulation px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                        className={`touch-manipulation px-4 py-2 rounded-xl text-xs font-black border transition flex items-center gap-1.5 cursor-pointer shadow-lg ${
                           rabPublicAccess
-                            ? "bg-emerald-950/80 border-emerald-500/60 text-emerald-300 hover:bg-emerald-900/80"
-                            : "bg-rose-950/80 border-rose-500/60 text-rose-300 hover:bg-rose-900/80"
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-300"
+                            : "bg-rose-600 hover:bg-rose-500 text-white border-rose-300"
                         }`}
-                        title="Atur izin akses publik: jika dibuka, user bisa melihat tanpa PIN (Read-Only). Jika dikunci, menu kosong."
+                        title="Klik untuk mengubah status: jika hijau, user lain bisa melihat (Read-Only). Jika merah, user lain terkunci."
                       >
                         {rabPublicAccess ? (
                           <>
-                            <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Izin Publik: Boleh Dilihat (Read-Only)</span>
+                            <Eye className="w-4 h-4 text-white" />
+                            <span>🟢 Izin Publik: Boleh Lihat (Read-Only)</span>
                           </>
                         ) : (
                           <>
-                            <EyeOff className="w-3.5 h-3.5 text-rose-400" />
-                            <span>Izin Publik: Dikunci (Kosong)</span>
+                            <EyeOff className="w-4 h-4 text-white" />
+                            <span>🔴 Izin Publik: Kunci (User Terkunci)</span>
                           </>
                         )}
                       </button>
