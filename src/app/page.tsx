@@ -395,11 +395,8 @@ export default function HomePage() {
           const savedPin = localStorage.getItem("rab_admin_pin");
           if (savedItems) setRabItems(JSON.parse(savedItems));
           if (savedDiscount !== null) setRabDiscount(parseInt(savedDiscount, 10) || 0);
-          if (savedAccess !== null) {
-            setRabPublicAccess(savedAccess === "true");
-          } else {
-            setRabPublicAccess(true);
-          }
+          // Do NOT lock public access from stale localStorage cache
+          setRabPublicAccess(true);
           if (savedPin && savedPin !== "1987") {
             setAdminPin(savedPin);
           } else {
@@ -412,37 +409,47 @@ export default function HomePage() {
       });
   }, []);
 
-  // Real-time Cloud KV listener: syncs permission status across all visitor devices within seconds!
+  // Real-time Cloud listener: syncs permission status across all devices within seconds!
   useEffect(() => {
     let isSubscribed = true;
-    const fetchAccessFromCloud = () => {
-      fetch("https://keyvalue.immanuel.co/api/KeyVal/GetValue/c84fpy47/rab_public_access")
-        .then((res) => res.text())
-        .then((text) => {
+    const fetchAccess = () => {
+      fetch("/api/rab-access")
+        .then((res) => res.json())
+        .then((data) => {
           if (!isSubscribed) return;
-          const clean = text.trim().toLowerCase().replace(/"/g, "");
-          if (clean === "true") {
-            setRabPublicAccess(true);
+          if (typeof data?.rabPublicAccess === "boolean") {
+            setRabPublicAccess(data.rabPublicAccess);
             try {
-              localStorage.setItem("rab_public_access", "true");
-            } catch {}
-          } else if (clean === "false") {
-            setRabPublicAccess(false);
-            try {
-              localStorage.setItem("rab_public_access", "false");
+              localStorage.setItem("rab_public_access", String(data.rabPublicAccess));
             } catch {}
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          // Direct cloud fallback
+          fetch("https://keyvalue.immanuel.co/api/KeyVal/GetValue/c84fpy47/rab_public_access")
+            .then((res) => res.text())
+            .then((text) => {
+              if (!isSubscribed) return;
+              const clean = text.trim().toLowerCase().replace(/"/g, "");
+              if (clean === "true" || clean === "false") {
+                const b = clean === "true";
+                setRabPublicAccess(b);
+                try {
+                  localStorage.setItem("rab_public_access", String(b));
+                } catch {}
+              }
+            })
+            .catch(() => {});
+        });
     };
 
-    fetchAccessFromCloud();
-    const interval = setInterval(fetchAccessFromCloud, 4000);
-    window.addEventListener("focus", fetchAccessFromCloud);
+    fetchAccess();
+    const interval = setInterval(fetchAccess, 3000);
+    window.addEventListener("focus", fetchAccess);
     return () => {
       isSubscribed = false;
       clearInterval(interval);
-      window.removeEventListener("focus", fetchAccessFromCloud);
+      window.removeEventListener("focus", fetchAccess);
     };
   }, []);
 
@@ -546,7 +553,13 @@ export default function HomePage() {
       localStorage.setItem("rab_public_access", String(newAccess));
     } catch {}
 
-    // 🌐 Real-Time Cloud Sync across all visitor devices (phones & desktops)
+    // 🌐 Real-Time Cloud Sync: both via internal API and cloud KV
+    fetch("/api/rab-access", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rabPublicAccess: newAccess }),
+    }).catch(() => {});
+
     fetch(
       `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/c84fpy47/rab_public_access/${newAccess}`,
       { method: "POST" }
@@ -555,8 +568,8 @@ export default function HomePage() {
     triggerGitSync(rabItems, rabDiscount, false, newAccess, adminPin);
     showToast(
       newAccess
-        ? "🔓 Izin Publik Diberikan: Pengunjung umum sekarang BISA LANGSUNG MELIHAT RAB tanpa PIN (Mode Read-Only / Hanya Lihat, tidak bisa edit)."
-        : "🔒 Izin Publik Dicabut: Menu RAB kini KOSONG & TERKUNCI untuk publik (Wajib PIN Admin)."
+        ? "🔓 Izin Publik Diberikan: Pengunjung sekarang BISA LANGSUNG MELIHAT RAB tanpa kode (Mode Read-Only)."
+        : "🔒 Izin Publik Dicabut: Menu RAB sekarang KOSONG & TERKUNCI untuk pengunjung."
     );
   };
 
@@ -2423,74 +2436,40 @@ export default function HomePage() {
           <div className="space-y-4 sm:space-y-6">
             {/* KONDISI 1: JIKA AKSES PUBLIK DIKUNCI TOTAL OLEH ADMIN & USER BELUM LOGIN */}
             {!isAdmin && !rabPublicAccess ? (
-              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-rose-950/40 border-2 border-rose-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl text-center max-w-2xl mx-auto space-y-5 my-6">
+              <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-rose-950/40 border-2 border-rose-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl text-center max-w-2xl mx-auto space-y-4 my-6">
                 <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-400 mx-auto flex items-center justify-center shadow-lg">
                   <Lock className="w-8 h-8" />
                 </div>
                 <div className="space-y-2">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold uppercase tracking-wider border border-rose-500/40">
                     <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span>Menu RAB Kosong & Terkunci</span>
+                    <span>RAB Ditutup / Dikunci oleh Admin</span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-black text-white">
-                    Rencana Anggaran Biaya (RAB) Terkunci
+                    Rencana Anggaran Biaya (RAB) Sedang Dikunci
                   </h2>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
-                    Seluruh rincian item penganggaran dikosongkan untuk pengunjung umum demi menjaga privasi dan keamanan dokumen. Menu RAB hanya dapat dibuka jika Admin memberikan izin akses, atau masukkan PIN Admin untuk membuka akses penuh.
+                    Admin Panitia saat ini sedang menutup/mengunci rincian anggaran untuk pengunjung umum demi menjaga privasi dan validitas dokumen.
                   </p>
                 </div>
 
-                {/* INLINE ADMIN PIN LOGIN FORM */}
-                <form
-                  onSubmit={handleAdminLogin}
-                  className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 max-w-md mx-auto space-y-3.5 shadow-inner text-left"
-                >
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-300">
-                      Masukkan PIN Admin:
-                    </label>
-                    <span className="text-[10px] text-amber-400 font-mono">
-                      Khusus Admin Panitia
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showPinVisible ? "text" : "password"}
-                      value={loginPinInput}
-                      onChange={(e) => {
-                        setLoginPinInput(e.target.value);
-                        setLoginError(null);
-                      }}
-                      placeholder="Ketik PIN Admin..."
-                      autoComplete="current-password"
-                      className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-center tracking-widest text-base sm:text-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPinVisible(!showPinVisible)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
-                    >
-                      {showPinVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {loginError && (
-                    <div className="text-xs text-rose-400 font-semibold bg-rose-950/60 border border-rose-800/80 rounded-lg p-2.5">
-                      ⚠️ {loginError}
-                    </div>
-                  )}
-
+                <div className="pt-3 text-xs text-slate-400">
+                  <span>Anda Panitia Pelaksana? </span>
                   <button
-                    type="submit"
-                    className="touch-manipulation w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs sm:text-sm shadow-xl transition flex items-center justify-center gap-2 cursor-pointer border border-amber-300"
+                    type="button"
+                    onClick={() => {
+                      setLoginError(null);
+                      setShowLoginModal(true);
+                    }}
+                    className="text-amber-400 font-bold hover:underline cursor-pointer inline-flex items-center gap-1 ml-1"
                   >
-                    <KeyRound className="w-4 h-4 stroke-[3]" />
-                    <span>Buka Akses Admin (PIN)</span>
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Masuk Mode Admin</span>
                   </button>
-                </form>
+                </div>
 
-                <p className="text-[11px] text-slate-400 pt-1">
-                  ℹ️ Catatan: Menu Denah 2D, Video Drone Udara, dan Studio CAD 3D tetap terbuka bebas untuk dilihat umum.
+                <p className="text-[11px] text-slate-500 pt-3 border-t border-slate-800/80">
+                  ℹ️ Catatan: Menu Denah 2D, Video Drone Udara, dan Studio CAD 3D tetap terbuka bebas untuk umum.
                 </p>
               </div>
             ) : (

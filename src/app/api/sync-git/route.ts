@@ -4,6 +4,8 @@ import path from "path";
 import { exec } from "child_process";
 import util from "util";
 
+import defaultRabConfig from "@/data/rab-config.json";
+
 const execAsync = util.promisify(exec);
 const CONFIG_PATH = path.join(process.cwd(), "src", "data", "rab-config.json");
 
@@ -12,10 +14,8 @@ export async function GET() {
     const raw = await fs.readFile(CONFIG_PATH, "utf-8");
     return NextResponse.json(JSON.parse(raw));
   } catch (err: any) {
-    return NextResponse.json(
-      { error: "Gagal membaca konfigurasi RAB", details: err.message },
-      { status: 500 }
-    );
+    // Graceful fallback on Vercel where fs might not be directly available
+    return NextResponse.json(defaultRabConfig);
   }
 }
 
